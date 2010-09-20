@@ -113,6 +113,7 @@ int main(void) {
                     fprintf(stdout, "Buffer: %s\n", buffer);
                     fflush(stdout);
                     memset(&buffer, 0, sizeof(buffer));
+//                    usleep(100);
                 }
             }
         }

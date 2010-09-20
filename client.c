@@ -22,7 +22,7 @@ int handle_request(int s, int fd, char *value) {
     for(i=0; i<4; i++)
         value++;
 
-    value[strlen(value)-1] = '\0';
+    value[strlen(value)] = '\0';
 
     reply = redisCommand(fd, "GET %b", value, strlen(value)-1);
     if(reply->type != REDIS_REPLY_NIL) {
@@ -47,8 +47,8 @@ int handle_request(int s, int fd, char *value) {
     else {
         snprintf(replyStr, (size_t) strlen(RESPONSE_FATAL) + 16, "%s %s\n", RESPONSE_FATAL, "unknown entry");
     }
-    fflush(stdout);
-    send(s, replyStr, (size_t) strlen(replyStr) +1, 0);
+//    fflush(stdout);
+    send(s, replyStr, (size_t) strlen(replyStr), 0);
     freeReplyObject(reply); 
 
     return ret;

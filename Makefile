@@ -21,5 +21,3 @@ client.o: client.c
 clean:
 	rm -f postfix-redis *.o
 	cd hiredis; $(MAKE) clean
-
-force_look: true
