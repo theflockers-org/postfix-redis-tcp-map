@@ -6,6 +6,7 @@ LD = gcc
 all: postfix-redis
 
 postfix-redis: main.o client.o config.o
+	$(MAKE) -C hiredis/
 	$(LD) -o postfix-redis config.o main.o client.o $(LDFLAGS)
 
 main.o: main.c
@@ -19,3 +20,6 @@ client.o: client.c
 
 clean:
 	rm -f postfix-redis *.o
+	cd hiredis; $(MAKE) clean
+
+force_look: true
