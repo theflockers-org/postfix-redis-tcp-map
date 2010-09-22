@@ -13,18 +13,16 @@
 
 extern config cfg;
 
-int handle_request(int s, int fd, char *value) {
+int handle_request(int s, int fd, char value[]) {
 
     redisReply *reply;
     char replyStr[256] = "";
-    int i, ret = 0;
+    char cmd[4], key[255];
+    int ret = 0;
 
-    for(i=0; i<4; i++)
-        value++;
+    sscanf(value, "%s %s", cmd, key);
 
-    value[strlen(value)] = '\0';
-
-    reply = redisCommand(fd, "GET %b", value, strlen(value)-1);
+    reply = redisCommand(fd, "GET %b", key, strlen(key));
     if(reply->type != REDIS_REPLY_NIL) {
         if(reply->type == REDIS_REPLY_STRING) {
             snprintf(replyStr, (size_t) strlen(RESPONSE_OK) + strlen(reply->reply) +3, "%s %s\n", RESPONSE_OK, reply->reply);
