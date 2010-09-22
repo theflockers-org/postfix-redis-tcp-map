@@ -15,9 +15,9 @@
 #include "config.h"
 
 #define BACKLOG     1024
-#define MAX_EVENTS  50
+#define MAX_EVENTS  128
 
-int handle_request(int s, int fd, char *value);
+int handle_request(int s, int fd);
 config parseConfig(char *filename);
 
 config cfg;
@@ -28,7 +28,6 @@ int setnonblocking(int fd) {
 
     return 0;
 }
-
 
 int main(void) {
 
@@ -84,6 +83,7 @@ int main(void) {
 
     for(;;) {
         nfds = epoll_wait(efd, events, MAX_EVENTS, -1);
+
         if (nfds == -1) {
             perror("epoll_pwait");
             exit(EXIT_FAILURE);
@@ -104,17 +104,13 @@ int main(void) {
                     exit(EXIT_FAILURE);
                 }
             } else {
-                while( recv(s, buffer, sizeof(buffer), 0) > 0) {
-                    if(handle_request(events[n].data.fd, fd, buffer)) {
-                        reply = redisConnect(&fd, cfg.redis_address, cfg.redis_port);
-                        if(reply != NULL)
-                            perror("redis_error");
-                    }
-                    fprintf(stdout, "Buffer: %s\n", buffer);
-                    fflush(stdout);
-                    memset(&buffer, 0, sizeof(buffer));
-//                    usleep(1000);
+                if(handle_request(events[n].data.fd, fd)) {
+                    reply = redisConnect(&fd, cfg.redis_address, cfg.redis_port);
+                    if(reply != NULL)
+                        perror("redis_error");
                 }
+                fflush(stdout);
+                memset(&buffer, 0, sizeof(buffer));
             }
         }
     }
