@@ -15,7 +15,7 @@
 #include "config.h"
 
 #define BACKLOG     1024
-#define MAX_EVENTS  128
+#define MAX_EVENTS  2048
 
 int handle_request(int s, int fd);
 config parseConfig(char *filename);
