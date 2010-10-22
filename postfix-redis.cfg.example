@@ -15,13 +15,13 @@ address = 127.0.0.1
 port = 3306
 username = root
 password = 123456
-dbname = locamail
+dbname =  database
 missing_registry_query = SELECT dominio, server FROM dominio WHERE dominio = '%s'
 
 [pgsql]
 address = 127.0.0.1
 port = 5432
-username = mobimail
+username = database
 password = 123456
-dbname = mobimail
+dbname = database
 missing_registry_query = SELECT dominio, server FROM bosta WHERE dominio = '%s'
