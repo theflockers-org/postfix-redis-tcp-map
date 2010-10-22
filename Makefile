@@ -1,23 +1,41 @@
-LDFLAGS = -L./hiredis -lhiredis
-CFLAGS = -Wall -W -I./hiredis -g
+LDFLAGS = -L./hiredis -lhiredis -levent -lc -lmysqlclient -lpq `pkg-config --libs glib-2.0`
+CFLAGS = -Wall -I./hiredis -g -DUSE_LIBEVENT -I/usr/include/mysql -I/usr/include/postgresql `pkg-config --cflags glib-2.0`
+PREFIX = /usr
+SBINDIR = $(PREFIX)/sbin
+SYSCONFDIR = /etc/locaweb/postfix-redis/
+
 CC = gcc
 LD = gcc
 
 all: postfix-redis
 
-postfix-redis: main.o client.o config.o
+postfix-redis: main.o client.o config.o redis.o mysql.o pgsql.o
 	$(MAKE) -C hiredis/
-	$(LD) -o postfix-redis config.o main.o client.o $(LDFLAGS)
+	$(LD) -o postfix-redis config.o main.o client.o redis.o mysql.o pgsql.o $(LDFLAGS) $(CFLAGS)
 
 main.o: main.c
-	$(CC) -c main.c $(CFLAGS)
+	$(CC) -c main.c $(CFLAGS) $(LDFLAGS)
 
 config.o: config.c
 	$(CC) -c config.c $(CFLAGS)
 
 client.o: client.c
-	$(CC) -c client.c $(CFLAGS) $(LDFLAGS)
+	$(CC) -c client.c -o client.o $(CFLAGS) $(LDFLAGS)
+
+redis.o: redis.c
+	$(CC) -c redis.c $(CFLAGS) $(LDFLAGS)
+
+mysql.o: mysql.c
+	$(CC) -c mysql.c $(CFLAGS) $(LDFLAGS)
+
+pgsql.o: pgsql.c
+	$(CC) -c pgsql.c $(CFLAGS) $(LDFLAGS)
 
 clean:
 	rm -f postfix-redis *.o
 	cd hiredis; $(MAKE) clean
+
+install:
+	install -m 0755 hiredis/libhiredis.so /usr/lib/
+	install -m 0700 -s postfix-redis $(SBINDIR)
+	install -b -D -m 0600 postfix-redis.cfg.example $(SYSCONFDIR)/postfix-redis.cfg

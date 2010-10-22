@@ -1,0 +1,27 @@
+# config file
+[main]
+address = 127.0.0.1
+port = 25000
+registry_prefix = nexthop
+
+[redis]
+address = 127.0.0.1
+port = 6379
+db_index = 0
+reload_time = 60
+
+[mysql]
+address = 127.0.0.1
+port = 3306
+username = root
+password = 123456
+dbname = locamail
+missing_registry_query = SELECT dominio, server FROM dominio WHERE dominio = '%s'
+
+[pgsql]
+address = 127.0.0.1
+port = 5432
+username = mobimail
+password = 123456
+dbname = mobimail
+missing_registry_query = SELECT dominio, server FROM bosta WHERE dominio = '%s'

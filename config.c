@@ -1,44 +1,68 @@
+/**
+ * @file config.c
+ * @brief Simple config file parser.
+ * @author Leandro Mendes <leandro.mendes@locaweb.com.br>
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <glib.h>
+#include <errno.h>
+#include <error.h>
 
 #include "config.h"
 
+/**
+ * @name parseConfig
+ * @description Open and parse a name filename 
+ * @param char *filename
+ * @return config cfg;
+ */
 config parseConfig(char *filename) {
 
-    FILE *fp;
-    char buf[4096];
-    char opt[255], val[255];
+    GKeyFile *keyfile;
+
+    keyfile = g_key_file_new();
+
+    if(! (g_key_file_load_from_file(keyfile, filename, 0, NULL))){
+        printf("Error opening %s: %s\n", filename, strerror(errno));
+        exit(-1); 
+    }
+
+    /* config struct */
     config cfg;
 
-    if( (fp = fopen(filename, "r") )== NULL) {
-        perror("Erro opening de config");
-    }
-    memset(&opt, 0, sizeof(opt));
-    memset(&val, 0, sizeof(val));
+    memset(&cfg, 0, sizeof(config));
 
-    while(fgets(buf, sizeof(buf), fp) != 0) {
-        sscanf(buf, "%s = %s", opt, val);
+    /* tcp daemon main configuration */
+    cfg.listen_address  = g_key_file_get_string(keyfile, "main",  "address", NULL);
+    cfg.listen_port     = g_key_file_get_integer(keyfile, "main",  "port", NULL);
+    cfg.registry_prefix = g_key_file_get_string(keyfile, "main",  "registry_prefix", NULL);
 
-        if(strncmp("listen_address", opt, 14) == 0)
-            snprintf(cfg.listen_address, (size_t) strlen(val)+1, "%s", val);
+    /* redis configuration */
+    cfg.redis_address     = g_key_file_get_string(keyfile, "redis", "address", NULL);
+    cfg.redis_port        = g_key_file_get_integer(keyfile, "redis", "port", NULL);
+    cfg.redis_db_index    = g_key_file_get_string(keyfile, "redis", "db_index", NULL);
+    cfg.redis_reload_time = g_key_file_get_integer(keyfile, "redis", "reload_time", NULL);
 
-        if(strncmp("listen_port", opt, 12) == 0)
-            cfg.listen_port = atoi(val);
+    /* mysql configuration */
+    cfg.mysql_address  = g_key_file_get_string(keyfile, "mysql", "address", NULL);
+    cfg.mysql_port     = g_key_file_get_integer(keyfile, "mysql", "port", NULL);
+    cfg.mysql_username = g_key_file_get_string(keyfile, "mysql", "username", NULL);
+    cfg.mysql_password = g_key_file_get_string(keyfile, "mysql", "password", NULL);
+    cfg.mysql_dbname   = g_key_file_get_string(keyfile, "mysql", "dbname", NULL);
+    cfg.missing_registry_mysql_query = g_key_file_get_string(keyfile, "mysql", "missing_registry_query", NULL);
 
-        if(strncmp("timeout", opt, 7) == 0)
-            cfg.timeout = atoi(val);
+    /* postgresql configuration */
+    cfg.pgsql_address  = g_key_file_get_string(keyfile, "pgsql", "address", NULL);
+    cfg.pgsql_port     = g_key_file_get_integer(keyfile, "pgsql", "port", NULL);
+    cfg.pgsql_username = g_key_file_get_string(keyfile, "pgsql", "username", NULL);
+    cfg.pgsql_password = g_key_file_get_string(keyfile, "pgsql", "password", NULL);
+    cfg.pgsql_dbname   = g_key_file_get_string(keyfile, "pgsql", "dbname", NULL);
+    cfg.missing_registry_pgsql_query = g_key_file_get_string(keyfile, "pgsql", "missing_registry_query", NULL);
 
-        if(strncmp("redis_address", opt, 13) == 0)
-            snprintf(cfg.redis_address, (size_t) strlen(val)+1, "%s", val);
+    g_key_file_free(keyfile);
 
-        if(strncmp("redis_port", opt, 10) == 0)
-            cfg.redis_port = atoi(val);
-
-        if(strncmp("redis_timeout", opt, 13) == 0)
-            cfg.redis_timeout = atoi(val);
-    }
-    fclose(fp);
     return cfg;
 }

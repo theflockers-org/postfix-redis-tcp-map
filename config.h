@@ -1,23 +1,34 @@
-/* config.h */
+#include <glib.h>
 
 typedef struct config config;
 
 struct config {
-    char listen_address[255];
-    char redis_address[255];
-    int  listen_port;
-    int  redis_port;
-    int  timeout;
-    int  redis_timeout;
+
+    /* tcp daemon */
+    gchar *listen_address;
+    gchar *registry_prefix;
+    int   listen_port;
+
+    /* redis */
+    gchar *redis_address;
+    gchar *redis_db_index;
+    int   redis_port;
+    int   redis_reload_time;
+
+    /* database (dbms)*/
+    gchar *pgsql_address;
+    gchar *pgsql_dbname;
+    gchar *pgsql_username;
+    gchar *pgsql_password;
+    int   pgsql_port;
+
+    /* database (dbms)*/
+    gchar *mysql_address;
+    gchar *mysql_dbname;
+    gchar *mysql_username;
+    gchar *mysql_password;
+    int   mysql_port;
+
+    gchar *missing_registry_mysql_query;
+    gchar *missing_registry_pgsql_query;
 };
-/*
-# config file
-
-listen_address = 10.1.1.1
-listen_port = 6666
-timeout = 5
-
-redis_address = 10.1.1.1
-redis_port = 6379
-redis_timeout = 5
-*/
