@@ -8,6 +8,7 @@ struct config {
     gchar *listen_address;
     gchar *registry_prefix;
     int   listen_port;
+    int   expire_seconds;
 
     /* redis */
     gchar *redis_address;

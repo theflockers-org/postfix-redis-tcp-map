@@ -39,6 +39,7 @@ config parseConfig(char *filename) {
     cfg.listen_address  = g_key_file_get_string(keyfile, "main",  "address", NULL);
     cfg.listen_port     = g_key_file_get_integer(keyfile, "main",  "port", NULL);
     cfg.registry_prefix = g_key_file_get_string(keyfile, "main",  "registry_prefix", NULL);
+    cfg.expire_seconds  = g_key_file_get_string(keyfile, "main", "expire_seconds", NULL);
 
     /* redis configuration */
     cfg.redis_address     = g_key_file_get_string(keyfile, "redis", "address", NULL);

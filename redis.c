@@ -61,16 +61,18 @@ int redisPoolInit(redisPool *pool, char hostname[255], int poolsize)  {
         freeReplyObject(reply);
     }
 
-    reply = redisCommand(pool->fd[0], "KEYS *");
-    if(reply->type == REDIS_REPLY_ARRAY)  {
-        if(reply->elements == 0 ) {
-            printf("Empty database, i'm fuc**ng off\n");
-            syslog(LOG_ERR, "Empty database, i'm fuc**ng off");
-            freeReplyObject(reply);
-            return -1;
+    if(cfg.expire_seconds == 0) {
+        reply = redisCommand(pool->fd[0], "KEYS *");
+        if(reply->type == REDIS_REPLY_ARRAY)  {
+            if(reply->elements == 0 ) {
+                printf("Empty database, i'm fuc**ng off\n");
+                syslog(LOG_ERR, "Empty database, i'm fuc**ng off");
+                freeReplyObject(reply);
+                return -1;
+            }
         }
+        freeReplyObject(reply);
     }
-    freeReplyObject(reply);
     pool->current = 0;
     return 0;
 }
@@ -101,6 +103,15 @@ int redis_set(redisPool *pool, char *key, char *val) {
                     val, strlen(val));
 
     freeReplyObject(reply);
+
+    if(cfg.expire_seconds > 0) {
+
+        reply = redisCommand(fd, "EXPIRE %b:%b %b",
+                    cfg.registry_prefix, strlen(cfg.registry_prefix), 
+                    key, strlen(key), 
+                    ((const char *) cfg.expire_seconds), strlen((const char *) cfg.expire_seconds));
+        freeReplyObject(reply);
+    }
 
     return 0;
 }
