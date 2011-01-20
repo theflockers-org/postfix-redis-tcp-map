@@ -53,6 +53,7 @@ config parseConfig(char *filename) {
     cfg.mysql_username = g_key_file_get_string(keyfile, "mysql", "username", NULL);
     cfg.mysql_password = g_key_file_get_string(keyfile, "mysql", "password", NULL);
     cfg.mysql_dbname   = g_key_file_get_string(keyfile, "mysql", "dbname", NULL);
+    cfg.mysql_enabled  = g_key_file_get_boolean(keyfile, "mysql", "enabled", NULL);
     cfg.missing_registry_mysql_query = g_key_file_get_string(keyfile, "mysql", "missing_registry_query", NULL);
 
     /* postgresql configuration */
@@ -61,7 +62,18 @@ config parseConfig(char *filename) {
     cfg.pgsql_username = g_key_file_get_string(keyfile, "pgsql", "username", NULL);
     cfg.pgsql_password = g_key_file_get_string(keyfile, "pgsql", "password", NULL);
     cfg.pgsql_dbname   = g_key_file_get_string(keyfile, "pgsql", "dbname", NULL);
+    cfg.pgsql_enabled  = g_key_file_get_boolean(keyfile, "pgsql", "enabled", NULL);
     cfg.missing_registry_pgsql_query = g_key_file_get_string(keyfile, "pgsql", "missing_registry_query", NULL);
+
+    cfg.ldap_uri         = g_key_file_get_string(keyfile, "ldap", "uri", NULL);
+    cfg.ldap_bind_dn     = g_key_file_get_string(keyfile, "ldap", "bind_dn", NULL);
+    cfg.ldap_bind_pw     = g_key_file_get_string(keyfile, "ldap", "bind_pw", NULL);
+    cfg.ldap_base        = g_key_file_get_string(keyfile, "ldap", "base", NULL);
+    cfg.ldap_enabled     = g_key_file_get_boolean(keyfile, "ldap", "enabled", NULL);
+    cfg.ldap_search_filter = g_key_file_get_string(keyfile, "ldap", "search_filter", NULL);
+    cfg.ldap_result_attr = g_key_file_get_string(keyfile, "ldap", "result_attr", NULL);
+
+
 
     g_key_file_free(keyfile);
 

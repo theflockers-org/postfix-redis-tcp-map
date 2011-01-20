@@ -9,6 +9,11 @@
 /* me */
 #include "tcp_mapper.h"
 
+/* config*/
+#include "config.h"
+
+extern config cfg;
+
 /**
  * @name init_mysql
  * @description Starts and returns a connected MySQL instance
@@ -31,7 +36,7 @@ MYSQL * init_mysql(void) {
     mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
 
     /* connect */
-    if(!mysql_real_connect(mysql, "localhost", "root", NULL, "locamail", 0, NULL, 0)){
+    if(!mysql_real_connect(mysql, cfg.mysql_address, cfg.mysql_username, cfg.mysql_password, cfg.mysql_dbname, 0, NULL, 0)){
         printf("Error connecting: %s\n", mysql_error(mysql));
 
         /* freed memory */

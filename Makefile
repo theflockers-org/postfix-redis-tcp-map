@@ -1,6 +1,6 @@
 VERSION = 0.1-1
 PACKAGE = postfix-tcp-redis-map
-LDFLAGS = -L./hiredis -lhiredis -levent -lc -lmysqlclient -lpq `pkg-config --libs glib-2.0`
+LDFLAGS = -L./hiredis -lhiredis -levent -lc -lmysqlclient -lpq `pkg-config --libs glib-2.0` -lldap
 CFLAGS = -Wall -I./hiredis -g -DUSE_LIBEVENT -I/usr/include/mysql -I/usr/include/postgresql `pkg-config --cflags glib-2.0`
 PREFIX = /usr
 SBINDIR = $(PREFIX)/sbin
@@ -11,9 +11,9 @@ LD = gcc
 
 all: postfix-redis package
 
-postfix-redis: main.o client.o config.o redis.o mysql.o pgsql.o
+postfix-redis: main.o client.o config.o redis.o mysql.o pgsql.o ldap.o
 	$(MAKE) -C hiredis/
-	$(LD) -o postfix-redis config.o main.o client.o redis.o mysql.o pgsql.o $(LDFLAGS) $(CFLAGS)
+	$(LD) -o postfix-redis config.o main.o client.o redis.o mysql.o pgsql.o ldap.o $(LDFLAGS) $(CFLAGS)
 
 main.o: main.c
 	$(CC) -c main.c $(CFLAGS) $(LDFLAGS)
@@ -33,6 +33,9 @@ mysql.o: mysql.c
 pgsql.o: pgsql.c
 	$(CC) -c pgsql.c $(CFLAGS) $(LDFLAGS)
 
+ldap.o: ldap.c
+	$(CC) -c ldap.c $(CFLAGS) $(LDFLAGS)
+
 clean:
 	rm -f postfix-redis *.o
 	cd hiredis; $(MAKE) clean
@@ -48,6 +51,7 @@ package:
 	mkdir -p debian/DEBIAN
 	install -D -m 0700 postfix-redis debian/usr/sbin/postfix-redis
 	install -D -m 0755 postfix-redis.cfg.example debian/etc/postfix-redis.cfg
+	install -D -m 0755 hiredis/libhiredis.so debian/usr/lib/libhiredis.so
 	sed "s/{ARCH}/`dpkg --print-architecture`/g" debian_control.in > debian/DEBIAN/control
 	dpkg-deb --build debian
 	mv debian.deb $(PACKAGE)_$(VERSION)_`dpkg --print-architecture`.deb

@@ -50,6 +50,9 @@ MYSQL     *mysql;
 PGconn    *pgsql;
 
 
+/* ldap */
+#include <ldap.h>
+LDAP *ldap;
 /**
  * @name init_mysql
  * @description initiates a mysql instance
@@ -64,6 +67,12 @@ MYSQL * init_mysql(void);
  */
 PGconn * init_pgsql(void);
 
+/**
+ * @name init_ldap
+ * @description initiates a ldap instance
+ * @return LDAP *ldap
+ */
+LDAP * init_ldap(void);
 
 /* others */
 int init_time;
@@ -170,10 +179,18 @@ int main(int argc, char **argv) {
     cfg = parseConfig(config_file);
 
     /* initiates mysql */
-    mysql = init_mysql();
-
+    if(!cfg.mysql_enabled == 0) {
+        mysql = init_mysql();
+    }
     /* initiates pgsql */
-    pgsql = init_pgsql();
+    if(!cfg.pgsql_enabled == 0) {
+        pgsql = init_pgsql();
+    }
+
+    /* initiates ldap */
+    if(!cfg.ldap_enabled == 0) {
+        ldap = init_ldap();
+    }
 
     proto = getprotobyname("tcp");
     sock = socket(AF_INET, SOCK_STREAM, proto->p_proto);

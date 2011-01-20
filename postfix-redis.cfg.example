@@ -2,6 +2,7 @@
 [main]
 address = 127.0.0.1
 port = 25000
+expire_seconds = 1800
 registry_prefix = nexthop
 
 [redis]
@@ -11,17 +12,28 @@ db_index = 0
 reload_time = 60
 
 [mysql]
-address = 127.0.0.1
+address = 10.50.0.2
 port = 3306
-username = root
-password = 123456
-dbname =  database
-missing_registry_query = SELECT dominio, server FROM dominio WHERE dominio = '%s'
+username = locamail_ro
+password = frcds345mkj
+dbname = locamail
+enabled = false
+missing_registry_query = SELECT 'OK' from dominio join apelidos using(id_dominio) where dominio.status = 1 and dominio = '%d' and nome_apelido = '%u' and vm_enable = 1 UNION SELECT 'OK' from dominio join email using(id_dominio) where dominio.status = 1 and dominio = '%d' and username = '%u' and vm_enable = 1 UNION SELECT 'OK' from dominio join grupos using(id_dominio) where dominio.status = 1 and dominio = '%d' and nome_grupo = '%u'
 
 [pgsql]
 address = 127.0.0.1
 port = 5432
-username = database
+username = mobimail
 password = 123456
-dbname = database
-missing_registry_query = SELECT dominio, server FROM bosta WHERE dominio = '%s'
+dbname = mobimail
+enabled = false
+missing_registry_query = SELECT vc_domain FROM tb_domain WHERE vc_domain = '%s'
+
+[ldap]
+uri = ldap://mx.wish4web.com.br:389
+bind_dn = cn=admin,ou=Mail,o=wish4technology
+bind_pw = th3fl0ck3r5
+base = ou=Mail,o=wish4technology
+search_filter = (&(cn=%u)(associatedDomain=%d))
+result_attr = mailTransport
+enabled = true
