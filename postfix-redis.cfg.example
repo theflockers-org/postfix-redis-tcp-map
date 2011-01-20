@@ -12,28 +12,28 @@ db_index = 0
 reload_time = 60
 
 [mysql]
-address = 10.50.0.2
+address = 10.0.0.1
 port = 3306
-username = locamail_ro
-password = frcds345mkj
-dbname = locamail
+username = user
+password = pass
+dbname = database
 enabled = false
-missing_registry_query = SELECT 'OK' from dominio join apelidos using(id_dominio) where dominio.status = 1 and dominio = '%d' and nome_apelido = '%u' and vm_enable = 1 UNION SELECT 'OK' from dominio join email using(id_dominio) where dominio.status = 1 and dominio = '%d' and username = '%u' and vm_enable = 1 UNION SELECT 'OK' from dominio join grupos using(id_dominio) where dominio.status = 1 and dominio = '%d' and nome_grupo = '%u'
+missing_registry_query = SELECT 'OK' from domain where user = '%u' and domain = '%d'
 
 [pgsql]
 address = 127.0.0.1
 port = 5432
-username = mobimail
-password = 123456
-dbname = mobimail
+username = user
+password = pass
+dbname = database
 enabled = false
-missing_registry_query = SELECT vc_domain FROM tb_domain WHERE vc_domain = '%s'
+missing_registry_query = SELECT 'OK' from domain where user = '%u' and domain = '%d'
 
 [ldap]
-uri = ldap://mx.wish4web.com.br:389
-bind_dn = cn=admin,ou=Mail,o=wish4technology
-bind_pw = th3fl0ck3r5
-base = ou=Mail,o=wish4technology
+uri = ldap://myldap.com:389
+bind_dn = cn=user,ou=Foo,o=bar
+bind_pw = pass 
+base = ou=Foo,o=bar
 search_filter = (&(cn=%u)(associatedDomain=%d))
 result_attr = mailTransport
 enabled = true

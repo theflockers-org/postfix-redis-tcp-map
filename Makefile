@@ -4,7 +4,7 @@ LDFLAGS = -L./hiredis -lhiredis -levent -lc -lmysqlclient -lpq `pkg-config --lib
 CFLAGS = -Wall -I./hiredis -g -DUSE_LIBEVENT -I/usr/include/mysql -I/usr/include/postgresql `pkg-config --cflags glib-2.0`
 PREFIX = /usr
 SBINDIR = $(PREFIX)/sbin
-SYSCONFDIR = /etc/locaweb/postfix-redis/
+SYSCONFDIR = /etc/postfix-redis/
 
 CC = gcc
 LD = gcc
