@@ -9,7 +9,7 @@ times = 1
 
 def send(nada, dom_list):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect( ('127.0.0.1', 25000) )
+    s.connect( ('127.0.0.1', 25001) )
     for i in range(0, times):
         for d in dom_list:
             s.send("get %s\r\n" % d)
@@ -22,7 +22,11 @@ domain = []
 for a in ascii_lowercase:
     for b in ascii_lowercase:
         for c in ascii_lowercase:
-            domain.append("%s%s%s.com.br" % (a,b,c))
+            #domain.append("%s%s%s.com.br" % (a,b,c))
+            domain.append("leandro@mp13.com.br")
+            domain.append("leandro@namoskaonline.com.br")
+            domain.append("leandro@wishweb.com.br")
+            domain.append("leandro@expressonoturno.com.br")
 
 size = len(domain) / num_threads
 
@@ -44,7 +48,7 @@ print "Starting test...\n"
 init_time = time.time()
 i = 0
 t = {}
-for i in len(div):
+for i in div:
     t[i] = threading.Thread(target=send, args=(None, div[i]))
     t[i].start()
     i = i +1

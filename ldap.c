@@ -71,9 +71,12 @@ int tcp_mapper_ldap_search(LDAP *ldap, char *search, char *result){
         /* just firts entry. We don't need any other */
         entry = ldap_first_entry(ldap, ldap_result);
         val   = ldap_get_values(ldap, entry, cfg.ldap_result_attr);
-        
-        snprintf(result, strlen(val[0])+1, "%s", (char *) val[0]);
-        ldap_value_free(val);
+   
+	if(val == NULL) {
+	    return 0; 
+	}
+	snprintf(result, strlen(val[0])+1, "%s", (char *) val[0]);
+	ldap_value_free(val);
     }
 
     return numentries;

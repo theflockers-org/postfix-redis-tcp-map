@@ -30,7 +30,7 @@
 #include "tcp_mapper.h"
 
 #define BACKLOG     1024
-#define MAX_EVENTS  2048
+#define MAX_EVENTS  65550
 
 /* configuration file */
 #include "config.h"

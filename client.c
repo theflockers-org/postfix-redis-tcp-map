@@ -219,7 +219,7 @@ void on_read(int fd, short ev, void *arg) {
     sprintf(ldapSearchString, "%s", replace_email_parts(cfg.ldap_search_filter));
 
     if(redis_lookup((char *) &response, &redis_pool, key) != 0) {
-        syslog(LOG_INFO, "Missing key (%s) checking SQL", key);
+        syslog(LOG_INFO, "Missing key (%s) checking datasource", key);
         
         /* lookup MySQL, if enabled */
         if(!cfg.mysql_enabled == 0) {    
@@ -249,7 +249,7 @@ void on_read(int fd, short ev, void *arg) {
                             strlen((char *) &result) ) +3,
                         "%s %s\n", POSTFIX_RESPONSE_OK, (char *) &result);
 
-                syslog(LOG_INFO, "Key (%s) found on PostgreSQL", key);
+                syslog(LOG_INFO, "Key (%s) found on Directory", key);
             }
             else {
                 snprintf((char *)&response, strlen(POSTFIX_RESPONSE_ERROR) + 16,
