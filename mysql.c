@@ -22,7 +22,7 @@ extern config cfg;
 MYSQL * init_mysql(void) {
 
     MYSQL     *mysql;
-    my_bool   reconnect = 1;
+    bool   reconnect = 1;
 
     /* initialize */
     if((mysql = mysql_init(NULL) ) == NULL) {

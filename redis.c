@@ -19,21 +19,26 @@ extern int init_time;
 
 int redisPoolInit(redisPool *pool, char hostname[255], int poolsize)  {
 
-    int i, fd;
+    int i;
     char currentdb[2];
     redisReply *reply;
 
     pool->size = poolsize;
-    reply = redisConnect(&fd, hostname, cfg.redis_port);
+    // reply = redisConnect(&fd, hostname, cfg.redis_port);
+    redisContext *c = redisConnect(hostname, cfg.redis_port);
 
-    if(reply != NULL) {
-        return -1;
+    if (c == NULL || c->err) {
+        if (c) {
+            printf("Error: %s\n", c->errstr);
+        } else {
+            printf("Can't allocate redis context\n");
+        }
     }
 
-    reply = redisCommand(fd, "GET CURRENTDB");
+    reply = redisCommand(c, "GET CURRENTDB");
 
     if(reply->type == REDIS_REPLY_STRING) {
-        snprintf(currentdb, strlen(reply->reply) +1, "%s", reply->reply);
+        snprintf(currentdb, strlen(reply->str) +1, "%s", reply->str);
     }
 
     if(atoi(currentdb) == 0) {
@@ -42,27 +47,29 @@ int redisPoolInit(redisPool *pool, char hostname[255], int poolsize)  {
         return -1;
     }
         
-    syslog(LOG_INFO, "Current database selected: %s", reply->reply);
+    syslog(LOG_INFO, "Current database selected: %s", reply->str);
 
     freeReplyObject(reply);
-    close(fd);
+    redisFree(c);
 
     for(i = 0; i < poolsize; i++) {
-        if(pool->fd[i])
-           close(pool->fd[i]);
+        if(pool->c[i])
+           redisFree(pool->c[i]);
 
-        reply = redisConnect(&pool->fd[i], hostname, cfg.redis_port);
-        if(reply != NULL) {
-            freeReplyObject(reply);
-            return -1;
+        pool->c[i] = redisConnect(hostname, cfg.redis_port);
+        if (pool->c[i] == NULL || pool->c[i]->err) {
+            if (pool->c[i]) {
+                printf("Error: %s\n", pool->c[i]->errstr);
+            } else {
+                printf("Can't allocate redis context\n");
+            }
         }
-    
-        reply = redisCommand(pool->fd[i], "SELECT %s", currentdb);
+        reply = redisCommand(pool->c[i], "SELECT %s", currentdb);
         freeReplyObject(reply);
     }
 
     if(cfg.expire_seconds == 0) {
-        reply = redisCommand(pool->fd[0], "KEYS *");
+        reply = redisCommand(pool->c[0], "KEYS *");
         if(reply->type == REDIS_REPLY_ARRAY)  {
             if(reply->elements == 0 ) {
                 printf("Empty database, i'm fuc**ng off\n");
@@ -77,7 +84,7 @@ int redisPoolInit(redisPool *pool, char hostname[255], int poolsize)  {
     return 0;
 }
 
-int redisPoolGetCurrent(redisPool *pool) {
+redisContext * redisPoolGetCurrent(redisPool *pool) {
 
     if(pool->current == pool->size)
        pool->current = 0;
@@ -87,17 +94,17 @@ int redisPoolGetCurrent(redisPool *pool) {
     pool->current++;
     pool->next = pool->current + 1;
 
-    return pool->fd[cur];
+    return pool->c[cur];
 }
 
 int redis_set(redisPool *pool, char *key, char *val) {
 
     redisReply *reply;
-    int fd;
+    redisContext *c;
 
-    fd = redisPoolGetCurrent(pool);
+    c = redisPoolGetCurrent(pool);
 
-    reply = redisCommand(fd, "SET %b:%b %b",
+    reply = redisCommand(c, "SET %b:%b %b",
                     cfg.registry_prefix, strlen(cfg.registry_prefix), 
                     key, strlen(key), 
                     val, strlen(val));
@@ -106,10 +113,10 @@ int redis_set(redisPool *pool, char *key, char *val) {
 
     if(cfg.expire_seconds > 0) {
 
-        reply = redisCommand(fd, "EXPIRE %b:%b %b",
+        reply = redisCommand(c, "EXPIRE %b:%b %b",
                     cfg.registry_prefix, strlen(cfg.registry_prefix), 
                     key, strlen(key), 
-                    ((const char *) cfg.expire_seconds), strlen((const char *) cfg.expire_seconds));
+                    cfg.expire_seconds, cfg.expire_seconds);
         freeReplyObject(reply);
     }
 
@@ -118,7 +125,6 @@ int redis_set(redisPool *pool, char *key, char *val) {
 
 int redis_lookup(char *response, redisPool *pool, char *key) {
 
-    int        fd;
     redisReply *reply;
     char       replyStr[64] = "";
     char       registry[64] = "";
@@ -135,14 +141,14 @@ int redis_lookup(char *response, redisPool *pool, char *key) {
         syslog(LOG_INFO, "%i passed. Realoading database\n", cfg.redis_reload_time);
         if(redisPoolInit(&redis_pool, cfg.redis_address, REDIS_POOL_SIZE) == -1) {
             snprintf(replyStr, (size_t) strlen(POSTFIX_RESPONSE_TEMPFAIL) 
-                + 20, "%s %s\n", POSTFIX_RESPONSE_TEMPFAIL, "reset database error");
+                + 23, "%s %s\n", POSTFIX_RESPONSE_TEMPFAIL, "reset database error");
         }
         /* reset the counter */
         time(&reset);
         init_time = (int) reset;
     }
 
-    fd = redisPoolGetCurrent(pool);
+    redisContext *c = redisPoolGetCurrent(pool);
     
     /* running the string cfg.registry_prefix to know what kinds of service i'll answer. */
     int i, scount = 0;
@@ -150,7 +156,7 @@ int redis_lookup(char *response, redisPool *pool, char *key) {
         /* when i found a comma or a string ending, issue the command */
         if((cfg.registry_prefix[i] == ',') || cfg.registry_prefix[i] == '\0') {
             registry[scount] = '\0';
-            reply = redisCommand(fd, "GET %b:%b", registry, strlen(registry), 
+            reply = redisCommand(c, "GET %b:%b", registry, strlen(registry), 
                     key, strlen(key));
 
             /* if the reply is not nil, break the loop. 
@@ -171,16 +177,16 @@ int redis_lookup(char *response, redisPool *pool, char *key) {
         /* if disconected, try reconnect */
         if(redisPoolInit(&redis_pool, cfg.redis_address, REDIS_POOL_SIZE) == -1) {
             snprintf(replyStr, (size_t) strlen(POSTFIX_RESPONSE_TEMPFAIL) 
-                + strlen(reply->reply) +3, "%s %s\n", POSTFIX_RESPONSE_TEMPFAIL, reply->reply);
+                + strlen(reply->str) +3, "%s %s\n", POSTFIX_RESPONSE_TEMPFAIL, reply->str);
         }
         else {
             /* if reconnected, select current */
-            fd = redisPoolGetCurrent(&redis_pool);
+            c = redisPoolGetCurrent(&redis_pool);
 
             /* re-send the request */
-            reply = redisCommand(fd, "GET %b:%b", registry, strlen(registry), key, strlen(key));
+            reply = redisCommand(c, "GET %b:%b", registry, strlen(registry), key, strlen(key));
             snprintf(replyStr, (size_t) strlen(POSTFIX_RESPONSE_OK) 
-                + strlen(reply->reply) +3, "%s %s\n", POSTFIX_RESPONSE_OK, reply->reply);
+                + strlen(reply->str) +4, "%s %s\n", POSTFIX_RESPONSE_OK, reply->str);
         }
     }
     else {
@@ -190,7 +196,7 @@ int redis_lookup(char *response, redisPool *pool, char *key) {
             /* if is a string (in this case, always) */
             if(reply->type == REDIS_REPLY_STRING) {
                 snprintf(replyStr, (size_t) strlen(POSTFIX_RESPONSE_OK) 
-                        + strlen(reply->reply) +3, "%s %s", POSTFIX_RESPONSE_OK, reply->reply);
+                        + strlen(reply->str) +3, "%s %s", POSTFIX_RESPONSE_OK, reply->str);
             }
         }
         /* if the entry does not exists, reply 500 to client */

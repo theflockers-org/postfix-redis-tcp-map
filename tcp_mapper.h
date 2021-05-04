@@ -1,3 +1,5 @@
+#include "hiredis.h"
+
 #define POSTFIX_RESPONSE_OK         "200"
 #define POSTFIX_RESPONSE_TEMPFAIL   "400"
 #define POSTFIX_RESPONSE_ERROR      "500"
@@ -21,7 +23,7 @@ typedef struct redisPool redisPool;
 
 struct redisPool {
     int size;
-    int fd[1024];
+    redisContext *c[1024];
     int current;
     int next;
     int prev;

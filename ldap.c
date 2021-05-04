@@ -25,6 +25,9 @@ LDAP * init_ldap(void) {
     int     err;
     int     v3 = LDAP_VERSION3;
 
+    struct berval cred;
+    struct berval *servcred;
+
     /* initialize */
     if((ldap_initialize(&ldap, cfg.ldap_uri) != LDAP_SUCCESS)) {
         perror("ldap_init error");
@@ -35,7 +38,7 @@ LDAP * init_ldap(void) {
     ldap_set_option(ldap, LDAP_OPT_PROTOCOL_VERSION, &v3);
 
     /* connect */
-    if(err = ldap_simple_bind_s(ldap, cfg.ldap_bind_dn, cfg.ldap_bind_pw) != LDAP_SUCCESS){
+    if((err = ldap_sasl_bind_s(ldap, cfg.ldap_bind_dn, cfg.ldap_bind_pw, &cred, NULL, NULL, &servcred) != LDAP_SUCCESS)){
         printf("%s\n", ldap_err2string(err));
 
         /* freed memory */
@@ -56,11 +59,16 @@ int tcp_mapper_ldap_search(LDAP *ldap, char *search, char *result){
     LDAPMessage *ldap_result, *entry;
     int     numentries = 0;
     int     err;
-    char    **val;
+    //char    **val;
+    struct berval **vals;
+
+    struct timeval timeout;
+    timeout.tv_sec = 10;
+    timeout.tv_usec = 0;
 
 
-    if(err = ldap_search_s(ldap, cfg.ldap_base, LDAP_SCOPE_SUBTREE, search,
-                NULL, 0, &ldap_result) != LDAP_SUCCESS ) {
+    if((err = ldap_search_ext_s(ldap, cfg.ldap_base, LDAP_SCOPE_SUBTREE, search,
+                NULL, 0, NULL, NULL, &timeout, 10, &ldap_result) != LDAP_SUCCESS )) {
 
         printf("%s\n", ldap_err2string(err));
         return -1;
@@ -68,15 +76,16 @@ int tcp_mapper_ldap_search(LDAP *ldap, char *search, char *result){
     numentries = ldap_count_entries(ldap, ldap_result);
 
     if(numentries != 0) {
-        /* just firts entry. We don't need any other */
+        /* just first entry. We don't need any other */
         entry = ldap_first_entry(ldap, ldap_result);
-        val   = ldap_get_values(ldap, entry, cfg.ldap_result_attr);
-   
-	if(val == NULL) {
-	    return 0; 
-	}
-	snprintf(result, strlen(val[0])+1, "%s", (char *) val[0]);
-	ldap_value_free(val);
+        vals   = ldap_get_values_len(ldap, entry, cfg.ldap_result_attr);
+
+        if(vals == NULL) {
+            return 0; 
+        }
+        snprintf(result, strlen(vals[0]->bv_val)+1, "%s", 
+                 (char *) vals[0]->bv_val);
+        ldap_value_free_len(vals);
     }
 
     return numentries;

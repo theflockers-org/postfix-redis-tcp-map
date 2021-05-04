@@ -176,9 +176,9 @@ void on_read(int fd, short ev, void *arg) {
      *
      */
 
-    char *replace_email_parts(char *orig) {
+    char *replace_email_parts(char *buff, char *orig) {
 
-        char buff[1024] = "";
+        //char buff[1024] = "";
 
         int i, c = 0;
         for(i = 0; i < strlen(orig); i++) {
@@ -214,9 +214,26 @@ void on_read(int fd, short ev, void *arg) {
     }
 
     // Paste the transformed Query
+    /*
     sprintf(mysqlQueryString, "%s", replace_email_parts(cfg.missing_registry_mysql_query));
     sprintf(pgsqlQueryString, "%s", replace_email_parts(cfg.missing_registry_pgsql_query));
-    sprintf(ldapSearchString, "%s", replace_email_parts(cfg.ldap_search_filter));
+    sprintf(ldapSearchString, "%s", replace_email_parts(cfg.ldap_search_filter)); */
+
+    char *mysql_missing_registry_query_buff;
+    char *pgsql_missing_registry_query_buff;
+    char *ldap_missing_registry_search_filter_buff;
+
+    mysql_missing_registry_query_buff = (char *) malloc(1024);
+    pgsql_missing_registry_query_buff = (char *) malloc(1024);
+    ldap_missing_registry_search_filter_buff = (char *) malloc(1024);
+
+    replace_email_parts(mysql_missing_registry_query_buff, cfg.missing_registry_mysql_query);
+    replace_email_parts(mysql_missing_registry_query_buff, cfg.missing_registry_pgsql_query);
+    replace_email_parts(ldap_missing_registry_search_filter_buff, cfg.ldap_search_filter);
+
+    sprintf(mysqlQueryString, "%s", mysql_missing_registry_query_buff);
+    sprintf(pgsqlQueryString, "%s", pgsql_missing_registry_query_buff);
+    sprintf(ldapSearchString, "%s", ldap_missing_registry_search_filter_buff);
 
     if(redis_lookup((char *) &response, &redis_pool, key) != 0) {
         syslog(LOG_INFO, "Missing key (%s) checking datasource", key);
