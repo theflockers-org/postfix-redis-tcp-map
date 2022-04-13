@@ -24,3 +24,28 @@ PGSQL and LDAP are not functional at the moment.
 ```
 $ make
 $ sudo ./postfix-redis -c /etc/postfix-redis/postfix-redis.cfg
+```
+
+## Database
+
+On MySQL/PGSQL
+You need a sample database like this (at least) but you can make the query on 
+`postfix-redis.cfg` match what you need.
+
+``` 
+------------------
+      users
+------------------
+user | domain
+------------------
+john | xpto.com
+foo  | bar.co.uk
+lala | popo.com.br
+```
+Sample `missing_registry_query`
+
+```
+SELECT 'OK' from domain where user = '%u' and domain = '%d'
+```
+
+The `OK` part is mandatory.
