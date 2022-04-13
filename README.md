@@ -47,5 +47,11 @@ Sample `missing_registry_query`
 ```
 SELECT 'OK' from domain where user = '%u' and domain = '%d'
 ```
-
 The `OK` part is mandatory.
+
+If you user table uses the full e-mail address, you can user `%s` instead of `%u`
+following Postfix lookup tables documentation. 
+
+- https://www.postfix.org/mysql_table.5.html
+- https://www.postfix.org/pgsql_table.5.html
+- https://www.postfix.org/ldap_table.5.html
