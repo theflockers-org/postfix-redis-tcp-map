@@ -20,7 +20,7 @@ extern int init_time;
 int redisPoolInit(redisPool *pool, char hostname[255], int poolsize)  {
 
     int i;
-    char currentdb[2];
+    // char currentdb[2];
     redisReply *reply;
 
     pool->size = poolsize;
@@ -35,22 +35,22 @@ int redisPoolInit(redisPool *pool, char hostname[255], int poolsize)  {
         }
     }
 
-    reply = redisCommand(c, "GET CURRENTDB");
+    //reply = redisCommand(c, "GET CURRENTDB");
 
-    if(reply->type == REDIS_REPLY_STRING) {
-        snprintf(currentdb, strlen(reply->str) +1, "%s", reply->str);
-    }
+    //if(reply->type == REDIS_REPLY_STRING) {
+    //    snprintf(currentdb, strlen(reply->str) +1, "%s", reply->str);
+    //}
 
-    if(atoi(currentdb) == 0) {
-        printf("Current db not configured\n");
-        syslog(LOG_ERR, "Current db not configured");
-        return -1;
-    }
-        
-    syslog(LOG_INFO, "Current database selected: %s", reply->str);
+    //if(atoi(currentdb) == 0) {
+    //    printf("Current db not configured\n");
+    //    syslog(LOG_ERR, "Current db not configured");
+    //    return -1;
+    //}
+    //    
+    //syslog(LOG_INFO, "Current database selected: %s", reply->str);
 
-    freeReplyObject(reply);
-    redisFree(c);
+    //freeReplyObject(reply);
+    //redisFree(c);
 
     for(i = 0; i < poolsize; i++) {
         if(pool->c[i])
@@ -64,7 +64,7 @@ int redisPoolInit(redisPool *pool, char hostname[255], int poolsize)  {
                 printf("Can't allocate redis context\n");
             }
         }
-        reply = redisCommand(pool->c[i], "SELECT %s", currentdb);
+        reply = redisCommand(pool->c[i], "SELECT %s", cfg.redis_db_index);
         freeReplyObject(reply);
     }
 
@@ -101,25 +101,25 @@ int redis_set(redisPool *pool, char *key, char *val) {
 
     redisReply *reply;
     redisContext *c;
-
     c = redisPoolGetCurrent(pool);
+
+    // up to 10 years expire time
+    char str_seconds[10] = "";
 
     reply = redisCommand(c, "SET %b:%b %b",
                     cfg.registry_prefix, strlen(cfg.registry_prefix), 
                     key, strlen(key), 
                     val, strlen(val));
-
+    
     freeReplyObject(reply);
-
     if(cfg.expire_seconds > 0) {
-
+        sprintf(str_seconds, "%d",  cfg.expire_seconds);
         reply = redisCommand(c, "EXPIRE %b:%b %b",
-                    cfg.registry_prefix, strlen(cfg.registry_prefix), 
+                    cfg.registry_prefix, strlen(cfg.registry_prefix),
                     key, strlen(key), 
-                    cfg.expire_seconds, cfg.expire_seconds);
+                    str_seconds, strlen(str_seconds));
         freeReplyObject(reply);
     }
-
     return 0;
 }
 

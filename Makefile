@@ -1,7 +1,7 @@
 VERSION = 0.1-1
 PACKAGE = postfix-tcp-redis-map
-LDFLAGS = -L./hiredis -lhiredis -levent -lc -lmysqlclient -lpq `pkg-config --libs glib-2.0` -lldap
-CFLAGS = -Wall -I./hiredis -g -DUSE_LIBEVENT -I/usr/include/mysql -I/usr/include/postgresql `pkg-config --cflags glib-2.0`
+LDFLAGS = -lhiredis -levent -lc -L/usr/lib64/mysql -lmysqlclient -lpq `pkg-config --libs glib-2.0` -lldap
+CFLAGS = -Wall -I/usr/include/hiredis -g -DUSE_LIBEVENT -I/usr/include/mysql -I/usr/include/postgresql `pkg-config --cflags glib-2.0`
 PREFIX = /usr
 SBINDIR = $(PREFIX)/sbin
 SYSCONFDIR = /etc/postfix-redis/
@@ -9,10 +9,10 @@ SYSCONFDIR = /etc/postfix-redis/
 CC = gcc
 LD = gcc
 
-all: postfix-redis package
+all: postfix-redis
 
 postfix-redis: main.o client.o config.o redis.o mysql.o pgsql.o ldap.o
-	$(MAKE) -C hiredis/
+	# $(MAKE) -C hiredis/
 	$(LD) -o postfix-redis config.o main.o client.o redis.o mysql.o pgsql.o ldap.o $(LDFLAGS) $(CFLAGS)
 
 main.o: main.c
@@ -38,20 +38,16 @@ ldap.o: ldap.c
 
 clean:
 	rm -f postfix-redis *.o
-	cd hiredis; $(MAKE) clean
-	rm -rf debian
-	rm *.deb
 
 install:
-	install -m 0755 hiredis/libhiredis.so /usr/lib/
 	install -m 0700 -s postfix-redis $(SBINDIR)
 	install -b -D -m 0600 postfix-redis.cfg.example $(SYSCONFDIR)/postfix-redis.cfg
 
-package:
+deb:
 	mkdir -p debian/DEBIAN
 	install -D -m 0700 postfix-redis debian/usr/sbin/postfix-redis
 	install -D -m 0755 postfix-redis.cfg.example debian/etc/postfix-redis.cfg
-	install -D -m 0755 hiredis/libhiredis.so debian/usr/lib/libhiredis.so
+	#install -D -m 0755 hiredis/libhiredis.so debian/usr/lib/libhiredis.so
 	sed "s/{ARCH}/`dpkg --print-architecture`/g" debian_control.in > debian/DEBIAN/control
 	dpkg-deb --build debian
 	mv debian.deb $(PACKAGE)_$(VERSION)_`dpkg --print-architecture`.deb

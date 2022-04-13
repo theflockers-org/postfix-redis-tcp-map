@@ -175,11 +175,10 @@ void on_read(int fd, short ev, void *arg) {
      * If exists, set into redis.
      *
      */
-
     char *replace_email_parts(char *buff, char *orig) {
 
         //char buff[1024] = "";
-
+        
         int i, c = 0;
         for(i = 0; i < strlen(orig); i++) {
             if(orig[i] == '%') {
@@ -210,6 +209,7 @@ void on_read(int fd, short ev, void *arg) {
             buff[c] = orig[i];
             c++;
         }
+        buff[c] = '\0';
         return buff;
     }
 
@@ -219,25 +219,28 @@ void on_read(int fd, short ev, void *arg) {
     sprintf(pgsqlQueryString, "%s", replace_email_parts(cfg.missing_registry_pgsql_query));
     sprintf(ldapSearchString, "%s", replace_email_parts(cfg.ldap_search_filter)); */
 
-    char *mysql_missing_registry_query_buff;
-    char *pgsql_missing_registry_query_buff;
-    char *ldap_missing_registry_search_filter_buff;
+    if(!cfg.mysql_enabled == 0) {
+        char *mysql_missing_registry_query_buff;
+        mysql_missing_registry_query_buff = (char *) malloc(1024);
+        replace_email_parts(mysql_missing_registry_query_buff, cfg.missing_registry_mysql_query);
+        sprintf(mysqlQueryString, "%s", mysql_missing_registry_query_buff);
+    }
+    if(!cfg.pgsql_enabled == 0) {
+        char *pgsql_missing_registry_query_buff;
+        pgsql_missing_registry_query_buff = (char *) malloc(1024);
+        replace_email_parts(pgsql_missing_registry_query_buff, cfg.missing_registry_pgsql_query);
+        sprintf(pgsqlQueryString, "%s", pgsql_missing_registry_query_buff);
+    }
 
-    mysql_missing_registry_query_buff = (char *) malloc(1024);
-    pgsql_missing_registry_query_buff = (char *) malloc(1024);
-    ldap_missing_registry_search_filter_buff = (char *) malloc(1024);
-
-    replace_email_parts(mysql_missing_registry_query_buff, cfg.missing_registry_mysql_query);
-    replace_email_parts(mysql_missing_registry_query_buff, cfg.missing_registry_pgsql_query);
-    replace_email_parts(ldap_missing_registry_search_filter_buff, cfg.ldap_search_filter);
-
-    sprintf(mysqlQueryString, "%s", mysql_missing_registry_query_buff);
-    sprintf(pgsqlQueryString, "%s", pgsql_missing_registry_query_buff);
-    sprintf(ldapSearchString, "%s", ldap_missing_registry_search_filter_buff);
+    if(!cfg.ldap_enabled == 0) {
+        char *ldap_missing_registry_search_filter_buff;
+        ldap_missing_registry_search_filter_buff = (char *) malloc(1024);
+        replace_email_parts(ldap_missing_registry_search_filter_buff, cfg.ldap_search_filter);
+        sprintf(ldapSearchString, "%s", ldap_missing_registry_search_filter_buff);
+    }
 
     if(redis_lookup((char *) &response, &redis_pool, key) != 0) {
         syslog(LOG_INFO, "Missing key (%s) checking datasource", key);
-        
         /* lookup MySQL, if enabled */
         if(!cfg.mysql_enabled == 0) {    
 
@@ -246,6 +249,7 @@ void on_read(int fd, short ev, void *arg) {
 
             if(tcp_mapper_mysql_query(mysql, mysqlQueryString, (char *) &result) > 0) {
                 redis_set(&redis_pool, key, (char *) &result);
+
                 snprintf( (char *) &response, ( strlen(POSTFIX_RESPONSE_OK) +
                             strlen((char *) &result) ) +3,
                         "%s %s\n", POSTFIX_RESPONSE_OK, (char *) &result);
