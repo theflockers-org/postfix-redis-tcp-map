@@ -1,5 +1,5 @@
 VERSION = 0.1-1
-PACKAGE = postfix-tcp-redis-map
+PACKAGE = postfix-redis-tcp-map
 LDFLAGS = -lhiredis -levent -lc -L/usr/lib64/mysql -lmysqlclient -lpq `pkg-config --libs glib-2.0` -lldap
 CFLAGS = -Wall -I/usr/include/hiredis -g -DUSE_LIBEVENT -I/usr/include/mysql -I/usr/include/postgresql `pkg-config --cflags glib-2.0`
 PREFIX = /usr
@@ -9,10 +9,9 @@ SYSCONFDIR = /etc/postfix-redis/
 CC = gcc
 LD = gcc
 
-all: postfix-redis
+all: package postfix-redis
 
 postfix-redis: main.o client.o config.o redis.o mysql.o pgsql.o ldap.o
-	# $(MAKE) -C hiredis/
 	$(LD) -o postfix-redis config.o main.o client.o redis.o mysql.o pgsql.o ldap.o $(LDFLAGS) $(CFLAGS)
 
 main.o: main.c
@@ -42,6 +41,11 @@ clean:
 install:
 	install -m 0700 -s postfix-redis $(SBINDIR)
 	install -b -D -m 0600 postfix-redis.cfg.example $(SYSCONFDIR)/postfix-redis.cfg
+
+package:
+	[ -d SOURCES ] || mkdir SOURCES
+	/usr/bin/tar -czf SOURCES/${PACKAGE}-${VERSION}.tar.gz *.c *.h *.spec \
+		*.sample *.md *py COPYING.LESSER Makefile
 
 deb:
 	mkdir -p debian/DEBIAN
