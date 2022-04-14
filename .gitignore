@@ -1,2 +1,4 @@
 *.o
 *.cfg
+prepend.sh
+tmp

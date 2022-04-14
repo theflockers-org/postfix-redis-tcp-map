@@ -1,3 +1,23 @@
+/**
+ *  Postfix Redis tcp map is a daemon to implement Postfixs tcp lookup table.
+ *  Copyright (C) 2011  Leandro Mendes <leandro at gmail dot com>
+ *  ---------------------------------------------------------------------------
+ *  This file is part of postfix-redis-tcp-map.
+ *
+ *  postfix-redis-tcp-map is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Lesser General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  postfix-redis-tcp-map is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with postfix-redis-tcp-map.  If not, see <https://www.gnu.org/licenses/>.
+ */
+ 
 #include <sys/time.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -212,12 +232,6 @@ void on_read(int fd, short ev, void *arg) {
         buff[c] = '\0';
         return buff;
     }
-
-    // Paste the transformed Query
-    /*
-    sprintf(mysqlQueryString, "%s", replace_email_parts(cfg.missing_registry_mysql_query));
-    sprintf(pgsqlQueryString, "%s", replace_email_parts(cfg.missing_registry_pgsql_query));
-    sprintf(ldapSearchString, "%s", replace_email_parts(cfg.ldap_search_filter)); */
 
     if(!cfg.mysql_enabled == 0) {
         char *mysql_missing_registry_query_buff;
