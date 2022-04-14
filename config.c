@@ -1,6 +1,6 @@
 /**
  *  Postfix Redis tcp map is a daemon to implement Postfixs tcp lookup table.
- *  Copyright (C) 2011  Leandro Mendes <leandro at gmail dot com>
+ *  Copyright (C) 2011  Leandro Mendes <theflockers at gmail dot com>
  *  ---------------------------------------------------------------------------
  *  This file is part of postfix-redis-tcp-map.
  *
@@ -21,7 +21,7 @@
 /**
  * @file config.c
  * @brief Simple config file parser.
- * @author Leandro Mendes <leandro.mendes@locaweb.com.br>
+ * @author Leandro Mendes <theflockers at gmail dot com>
  */
 #include <stdio.h>
 #include <stdlib.h>
