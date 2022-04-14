@@ -1,4 +1,4 @@
-VERSION = 0.1-1
+VERSION = 0.1
 PACKAGE = postfix-redis-tcp-map
 LDFLAGS = -lhiredis -levent -lc -L/usr/lib64/mysql -lmysqlclient -lpq `pkg-config --libs glib-2.0` -lldap
 CFLAGS = -Wall -I/usr/include/hiredis -g -DUSE_LIBEVENT -I/usr/include/mysql -I/usr/include/postgresql `pkg-config --cflags glib-2.0`
