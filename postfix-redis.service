@@ -1,0 +1,14 @@
+[Unit]
+Description=Postfix Redis tcp map
+After=syslog.target
+After=network.target
+
+[Service]
+Type=notify
+User=mail
+Group=mail
+ExecStart=/usr/sbin/postfix-redis -c /etc/postfix-redis/postfix-redis.cfg
+LimitNOFILE=10000
+
+[Install]
+WantedBy=multi-user.target
