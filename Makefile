@@ -45,7 +45,7 @@ install:
 package:
 	[ -d SOURCES ] || mkdir SOURCES
 	/usr/bin/tar -czf SOURCES/${PACKAGE}-${VERSION}.tar.gz *.c *.h *.spec \
-		*.sample *.md *py COPYING.LESSER Makefile
+		*.sample *.service *.md *py COPYING.LESSER Makefile
 
 deb:
 	mkdir -p debian/DEBIAN
