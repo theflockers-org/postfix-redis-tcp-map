@@ -61,24 +61,21 @@ config cfg;
 #include "hiredis.h"
 redisPool redis_pool;
 
-/* mysql */
+#ifdef HAS_MYSQL
 #include <mysql.h>
 MYSQL     *mysql;
 
-/* pgsql */
-#include <libpq-fe.h>
-PGconn    *pgsql;
-
-
-/* ldap */
-#include <ldap.h>
-LDAP *ldap;
 /**
  * @name init_mysql
  * @description initiates a mysql instance
  * @return MYSQL *mysql
  */
 MYSQL * init_mysql(void);
+#endif
+
+#ifdef HAS_PGSQL	
+#include <libpq-fe.h>
+PGconn    *pgsql;
 
 /**
  * @name init_pgsql
@@ -86,6 +83,11 @@ MYSQL * init_mysql(void);
  * @return PGconn *pgsql
  */
 PGconn * init_pgsql(void);
+#endif
+
+#ifdef HAS_LDAP
+#include <ldap.h>
+LDAP *ldap;
 
 /**
  * @name init_ldap
@@ -93,6 +95,7 @@ PGconn * init_pgsql(void);
  * @return LDAP *ldap
  */
 LDAP * init_ldap(void);
+#endif
 
 /* others */
 int init_time;
@@ -104,7 +107,6 @@ void help(void){
             -h\033[30GShow this help\n\n");
     exit(0);
 }
-
 
 /**
  * @name signal_handler
@@ -198,19 +200,26 @@ int main(int argc, char **argv) {
     /* parse the config file */
     cfg = parseConfig(config_file);
 
+#ifdef HAS_MYSQL
     /* initiates mysql */
     if(!cfg.mysql_enabled == 0) {
         mysql = init_mysql();
     }
+#endif
+
+#ifdef HAS_PGSQL
     /* initiates pgsql */
     if(!cfg.pgsql_enabled == 0) {
         pgsql = init_pgsql();
     }
+#endif
 
+#ifdef HAS_LDAP
     /* initiates ldap */
     if(!cfg.ldap_enabled == 0) {
         ldap = init_ldap();
     }
+#endif
 
     proto = getprotobyname("tcp");
     sock = socket(AF_INET, SOCK_STREAM, proto->p_proto);

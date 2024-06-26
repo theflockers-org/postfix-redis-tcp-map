@@ -1,7 +1,7 @@
-VERSION = 0.1
+VERSION = 0.2
 PACKAGE = postfix-redis-tcp-map
-LDFLAGS = -lhiredis -levent -lc -L/usr/lib64/mysql -lmysqlclient -lpq `pkg-config --libs glib-2.0` -lldap
-CFLAGS = -Wall -I/usr/include/hiredis -g -DUSE_LIBEVENT -I/usr/include/mysql -I/usr/include/postgresql `pkg-config --cflags glib-2.0`
+LIBS = -lhiredis -levent -lc `pkg-config --libs glib-2.0` $(LDFLAGS)
+CPPFLAGS = -Wall -I/usr/include/hiredis -g -DUSE_LIBEVENT `pkg-config --cflags glib-2.0` $(CFLAGS)
 PREFIX = /usr
 SBINDIR = $(PREFIX)/sbin
 SYSCONFDIR = /etc/postfix-redis/
@@ -12,31 +12,32 @@ LD = gcc
 all: package postfix-redis
 
 postfix-redis: main.o client.o config.o redis.o mysql.o pgsql.o ldap.o
-	$(LD) -o postfix-redis config.o main.o client.o redis.o mysql.o pgsql.o ldap.o $(LDFLAGS) $(CFLAGS)
+	$(LD) -o postfix-redis config.o main.o client.o redis.o mysql.o pgsql.o ldap.o $(LIBS) $(CPPFLAGS) 
 
 main.o: main.c
-	$(CC) -c main.c $(CFLAGS) $(LDFLAGS)
+	$(CC) -c main.c $(CPPFLAGS) $(LIBS)
 
 config.o: config.c
-	$(CC) -c config.c $(CFLAGS)
+	$(CC) -c config.c $(CPPFLAGS)
 
 client.o: client.c
-	$(CC) -c client.c -o client.o $(CFLAGS) $(LDFLAGS)
+	$(CC) -c client.c -o client.o $(CPPFLAGS) $(LIBS)
 
 redis.o: redis.c
-	$(CC) -c redis.c $(CFLAGS) $(LDFLAGS)
+	$(CC) -c redis.c $(CPPFLAGS) $(LIBS)
 
 mysql.o: mysql.c
-	$(CC) -c mysql.c $(CFLAGS) $(LDFLAGS)
+	$(CC) -c mysql.c $(CPPFLAGS) $(LIBS)
 
 pgsql.o: pgsql.c
-	$(CC) -c pgsql.c $(CFLAGS) $(LDFLAGS)
+	$(CC) -c pgsql.c $(CPPFLAGS) $(LIBS)
 
 ldap.o: ldap.c
-	$(CC) -c ldap.c $(CFLAGS) $(LDFLAGS)
+	$(CC) -c ldap.c $(CPPFLAGS) $(LIBS)
 
 clean:
 	rm -f postfix-redis *.o
+	rm -rf SOURCES
 
 install:
 	install -m 0700 -s postfix-redis $(SBINDIR)

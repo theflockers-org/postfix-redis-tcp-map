@@ -17,7 +17,8 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with postfix-redis-tcp-map.  If not, see <https://www.gnu.org/licenses/>.
  */
- 
+
+#ifdef HAS_PGSQL
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -82,3 +83,4 @@ int tcp_mapper_pgsql_query(PGconn *pgsql, char *query, char *result) {
 
     return numrows;
 }
+#endif

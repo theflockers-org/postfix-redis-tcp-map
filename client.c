@@ -46,42 +46,10 @@
 #include "config.h"
 #include "tcp_mapper.h"
 
-
+#ifdef HAS_PGSQL
 /* pgsql */
 #include <libpq-fe.h>
 extern PGconn *pgsql;
-
-/* mysql */
-#include <mysql.h>
-extern MYSQL *mysql;
-
-/* ldap */
-#include <ldap.h>
-extern LDAP *ldap;
-
-
-
-/* config */
-extern config cfg; 
-
-/* redis */
-extern redisPool redis_pool;
-
-/**
- *  @struct client
- */
-struct client {
-	struct event ev_read;
-};
-
-/**
- * @name tcp_mapper_mysql_query
- * @description Issue a query to mysql
- * @param MYSQL *mysql
- * @param char *query
- * @return int
- */
-int tcp_mapper_mysql_query(MYSQL *mysql, char *query, char *result);
 
 /**
  * @name tcp_mapper_pgsql_query
@@ -92,6 +60,30 @@ int tcp_mapper_mysql_query(MYSQL *mysql, char *query, char *result);
  */
 int tcp_mapper_pgsql_query(PGconn *pgsql, char *query, char *result);
 
+#endif
+
+#ifdef HAS_MYSQL
+/* mysql */
+#include <mysql.h>
+extern MYSQL *mysql;
+
+/**
+ * @name tcp_mapper_mysql_query
+ * @description Issue a query to mysql
+ * @param MYSQL *mysql
+ * @param char *query
+ * @return int
+ */
+int tcp_mapper_mysql_query(MYSQL *mysql, char *query, char *result);
+
+
+#endif
+
+#ifdef HAS_LDAP
+/* ldap */
+#include <ldap.h>
+extern LDAP *ldap;
+
 /**
  * @name tcp_mapper_ldap_query
  * @description Issue a search on ldap
@@ -100,6 +92,20 @@ int tcp_mapper_pgsql_query(PGconn *pgsql, char *query, char *result);
  * @return int
  */
 int tcp_mapper_ldap_search(LDAP *ldap, char *filter, char *result);
+#endif
+
+/* config */
+extern config cfg; 
+
+/**
+ *  @struct client
+ */
+struct client {
+	struct event ev_read;
+};
+
+/* redis */
+extern redisPool redis_pool;
 
 /**
  * @name redis_set
@@ -110,7 +116,6 @@ int tcp_mapper_ldap_search(LDAP *ldap, char *filter, char *result);
  * @return int
  */
 int redis_set(redisPool *pool, char *key, char *val);
-
 
 /**
  * @name on_read
@@ -257,7 +262,7 @@ void on_read(int fd, short ev, void *arg) {
         syslog(LOG_INFO, "Missing key (%s) checking datasource", key);
         /* lookup MySQL, if enabled */
         if(!cfg.mysql_enabled == 0) {    
-
+#ifdef HAS_MYSQL
             /* ping the mysql server, and reconnect */
             mysql_ping(mysql);
 
@@ -274,8 +279,10 @@ void on_read(int fd, short ev, void *arg) {
                 snprintf((char *)&response, strlen(POSTFIX_RESPONSE_ERROR) + 16,
                     "%s %s\n", POSTFIX_RESPONSE_ERROR, "unknown entry");
             }
+#endif
         }
         else if(!cfg.ldap_enabled == 0) {
+#ifdef HAS_LDAP
             if(tcp_mapper_ldap_search(ldap, ldapSearchString,(char *) &result) > 0) {
 
                 redis_set(&redis_pool, key, (char *) &result);
@@ -290,10 +297,11 @@ void on_read(int fd, short ev, void *arg) {
                 snprintf((char *)&response, strlen(POSTFIX_RESPONSE_ERROR) + 16,
                         "%s %s\n", POSTFIX_RESPONSE_ERROR, "unknown entry");
             }
-
+#endif
         }
         /* lookup PgSQL, if enabled */
         else if(!cfg.pgsql_enabled == 0){
+#ifdef HAS_PGSQL
 
             /* check if pgsql is still alive */
             if(PQstatus(pgsql) != CONNECTION_OK)  {
@@ -314,6 +322,7 @@ void on_read(int fd, short ev, void *arg) {
                 snprintf((char *)&response, strlen(POSTFIX_RESPONSE_ERROR) + 16,
                         "%s %s\n", POSTFIX_RESPONSE_ERROR, "unknown entry");
             }
+#endif
         }
         else  {
             snprintf((char *)&response, strlen(POSTFIX_RESPONSE_ERROR) + 16,

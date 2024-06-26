@@ -16,16 +16,35 @@ PGSQL and LDAP are not functional at the moment.
 - glib2-devel
 - libevent-devel
 - hiredis-devel
+
+### optional
 - mysql-devel
 - libpq-devel
 - openldap-devel
 
 ## Building
+Run `make` with the backend compiler flags
+
+### MYSQL
 ```
-$ make
-$ sudo ./postfix-redis -c /etc/postfix-redis/postfix-redis.cfg
+$ make CFLAGS="-DHAS_MYSQL -I/usr/include/mysql \
+       LDFLAGS="-L/usr/lib/mysql -lmysqlclient"
+```
+### PGSQL
+```
+$ make CFLAGS="-DHAS_PGSQL -I/usr/include \
+       LDFLAGS="-L/usr/lib -lq"
+```
+### LDAP
+```
+$ make CFLAGS="-DHAS_LDAP -I/usr/include \
+       LDFLAGS="-L/usr/lib -lldap"
 ```
 
+## Running
+```
+$ sudo ./postfix-redis -c /etc/postfix-redis/postfix-redis.cfg
+```
 ## Database
 
 On MySQL/PGSQL
