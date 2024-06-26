@@ -68,6 +68,20 @@ SELECT 'OK' from domain where user = '%u' and domain = '%d'
 ```
 The `OK` part is mandatory.
 
+### Benchmark
+
+Service responsetime for MYSQL Backend running on a lenovo laptop:
+
+```
+Starting test...
+
+Requests:             17576
+Run delay:            3.303 ms
+Theads:               1
+AVG Req by thread:    5320 requests per thread
+AVG Requests:         ~ 5320 requests per second
+``` 
+
 If you user table uses the full e-mail address, you can user `%s` instead of `%u`
 following Postfix lookup tables documentation. 
 
