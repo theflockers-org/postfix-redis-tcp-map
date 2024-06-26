@@ -17,7 +17,8 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with postfix-redis-tcp-map.  If not, see <https://www.gnu.org/licenses/>.
  */
- 
+
+#ifdef HAS_MYSQL
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -99,3 +100,4 @@ int tcp_mapper_mysql_query(MYSQL *mysql, char *query, char *result){
 
     return numrows;
 }
+#endif
