@@ -8,7 +8,7 @@ This software is distributed as is without any warranty
 
 ## Known bugs
 
-PGSQL and LDAP are not functional at the moment.
+LDAP is not fully functional at the moment.
 
 ## Requirements
 
