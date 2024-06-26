@@ -20,13 +20,12 @@ def send(nada, dom_list):
     s.close()
 
 
-num_threads = 1
+num_threads = 10
 domain = []
 for a in ascii_lowercase:
     for b in ascii_lowercase:
         for c in ascii_lowercase:
             domain.append("user@%s%s%s.com.br" % (a, b, c))
-            # domain.append("lmendes@mp13.com.br")
 
 size = len(domain) / num_threads
 

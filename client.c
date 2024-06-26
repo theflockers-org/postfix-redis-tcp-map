@@ -38,11 +38,13 @@
 #define MSG_NOSIGNAL SO_NOSIGPIPE
 #endif
 
+/* hiredis */
+#include <hiredis/hiredis.h>
+
 /* libevent */
 #include <event.h>
 
 /* local includes */
-#include "hiredis.h"
 #include "config.h"
 #include "tcp_mapper.h"
 
@@ -129,15 +131,15 @@ void on_read(int fd, short ev, void *arg) {
 
     int    len;
 
-    char   cmd[16] = "";
+    char   cmd[4] = "";
     char   key[64] = "";
 	char   buf[256];
 
     char   mysqlQueryString[512];
     char   pgsqlQueryString[512];
     char   ldapSearchString[512];
-    char   response[255] = "";
-    char   *result;
+    char   *response = malloc(sizeof *response);
+    char   *result   = malloc(sizeof *result);
  
 	struct client *client = (struct client *)arg;
 
@@ -190,9 +192,9 @@ void on_read(int fd, short ev, void *arg) {
 
     syslog(LOG_INFO, "Postfix request: (%s %s)", cmd, key);
 
-    /* initialize */
-    memset(&response, 0, sizeof(response));
-    memset(&result,   0, sizeof(result));
+	/* initialize */
+    memset(&response, 0, sizeof(*response));
+    memset(&result, 0, sizeof(*result));
 
     /* Lookup the key into redis and if is not found (!= 0)
      * try to lookup into MySQL or PGSQL.
@@ -243,12 +245,14 @@ void on_read(int fd, short ev, void *arg) {
         mysql_missing_registry_query_buff = (char *) malloc(1024);
         replace_email_parts(mysql_missing_registry_query_buff, cfg.missing_registry_mysql_query);
         sprintf(mysqlQueryString, "%s", mysql_missing_registry_query_buff);
+		free(mysql_missing_registry_query_buff);
     }
     if(!cfg.pgsql_enabled == 0) {
         char *pgsql_missing_registry_query_buff;
         pgsql_missing_registry_query_buff = (char *) malloc(1024);
         replace_email_parts(pgsql_missing_registry_query_buff, cfg.missing_registry_pgsql_query);
         sprintf(pgsqlQueryString, "%s", pgsql_missing_registry_query_buff);
+		free(pgsql_missing_registry_query_buff);
     }
 
     if(!cfg.ldap_enabled == 0) {
@@ -256,10 +260,12 @@ void on_read(int fd, short ev, void *arg) {
         ldap_missing_registry_search_filter_buff = (char *) malloc(1024);
         replace_email_parts(ldap_missing_registry_search_filter_buff, cfg.ldap_search_filter);
         sprintf(ldapSearchString, "%s", ldap_missing_registry_search_filter_buff);
+		free(ldap_missing_registry_search_filter_buff);
     }
 
     if(redis_lookup((char *) &response, &redis_pool, key) != 0) {
         syslog(LOG_INFO, "Missing key (%s) checking datasource", key);
+
         /* lookup MySQL, if enabled */
         if(!cfg.mysql_enabled == 0) {    
 #ifdef HAS_MYSQL
@@ -269,32 +275,31 @@ void on_read(int fd, short ev, void *arg) {
             if(tcp_mapper_mysql_query(mysql, mysqlQueryString, (char *) &result) > 0) {
                 redis_set(&redis_pool, key, (char *) &result);
 
-                snprintf( (char *) &response, ( strlen(POSTFIX_RESPONSE_OK) +
-                            strlen((char *) &result) ) +3,
+
+                snprintf((char *) &response, (strlen(POSTFIX_RESPONSE_OK) +
+                            strlen((char *) &result)) +3,
                         "%s %s\n", POSTFIX_RESPONSE_OK, (char *) &result);
 
                 syslog(LOG_INFO, "Key (%s) found on MySQL", key);
             } 
             else {
-                snprintf((char *)&response, strlen(POSTFIX_RESPONSE_ERROR) + 16,
+                snprintf((char *) &response, strlen(POSTFIX_RESPONSE_ERROR) + 16,
                     "%s %s\n", POSTFIX_RESPONSE_ERROR, "unknown entry");
             }
 #endif
         }
         else if(!cfg.ldap_enabled == 0) {
 #ifdef HAS_LDAP
-            if(tcp_mapper_ldap_search(ldap, ldapSearchString,(char *) &result) > 0) {
-
+            if(tcp_mapper_ldap_search(ldap, ldapSearchString, (char *) &result) > 0) {
                 redis_set(&redis_pool, key, (char *) &result);
-
-                snprintf( (char *) &response, ( strlen(POSTFIX_RESPONSE_OK) +
-                            strlen((char *) &result) ) +3,
+                snprintf((char *) &response, (strlen(POSTFIX_RESPONSE_OK) +
+                            strlen((char *) &result)) +3,
                         "%s %s\n", POSTFIX_RESPONSE_OK, (char *) &result);
 
                 syslog(LOG_INFO, "Key (%s) found on Directory", key);
             }
             else {
-                snprintf((char *)&response, strlen(POSTFIX_RESPONSE_ERROR) + 16,
+                snprintf((char *) &response, strlen(POSTFIX_RESPONSE_ERROR) + 16,
                         "%s %s\n", POSTFIX_RESPONSE_ERROR, "unknown entry");
             }
 #endif
@@ -312,25 +317,25 @@ void on_read(int fd, short ev, void *arg) {
 
                 redis_set(&redis_pool, key, (char *) &result);
 
-                snprintf( (char *) &response, ( strlen(POSTFIX_RESPONSE_OK) +
+                snprintf((char *) &response, (strlen(POSTFIX_RESPONSE_OK) +
                             strlen((char *) &result) ) +3,
                         "%s %s\n", POSTFIX_RESPONSE_OK, (char *) &result);
 
                 syslog(LOG_INFO, "Key (%s) found on PostgreSQL", key);
             }
             else {
-                snprintf((char *)&response, strlen(POSTFIX_RESPONSE_ERROR) + 16,
+                snprintf((char *) &response, strlen(POSTFIX_RESPONSE_ERROR) + 16,
                         "%s %s\n", POSTFIX_RESPONSE_ERROR, "unknown entry");
             }
 #endif
         }
         else  {
-            snprintf((char *)&response, strlen(POSTFIX_RESPONSE_ERROR) + 16,
+            snprintf((char *) &response, strlen(POSTFIX_RESPONSE_ERROR) + 16,
                         "%s %s\n", POSTFIX_RESPONSE_ERROR, "unknown entry");
                 syslog(LOG_INFO, "Key (%s) not found", key);
         }
     }
-    send(fd, &response, (size_t)strlen((const char *)&response), MSG_NOSIGNAL);
+    send(fd, &response, (size_t)strlen((const char *) &response), MSG_NOSIGNAL);
 }
 
 /**

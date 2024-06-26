@@ -57,9 +57,11 @@ LDAP * init_ldap(void) {
     }
 
     ldap_set_option(ldap, LDAP_OPT_PROTOCOL_VERSION, &v3);
+	
+	cred.bv_val = cfg.ldap_bind_pw;
+	cred.bv_len = strlen(cfg.ldap_bind_pw);
 
-    /* connect */
-    if((err = ldap_sasl_bind_s(ldap, cfg.ldap_bind_dn, cfg.ldap_bind_pw, &cred, NULL, NULL, &servcred) != LDAP_SUCCESS)){
+    if((err = ldap_sasl_bind_s(ldap, cfg.ldap_bind_dn, LDAP_SASL_SIMPLE, &cred, NULL, NULL, &servcred) != LDAP_SUCCESS)){
         printf("%s\n", ldap_err2string(err));
 
         /* freed memory */
@@ -83,17 +85,21 @@ int tcp_mapper_ldap_search(LDAP *ldap, char *search, char *result){
     //char    **val;
     struct berval **vals;
 
+    // return attributes	
+	char *attrs[] = { cfg.ldap_result_attr };
+
+	// timeout
     struct timeval timeout;
     timeout.tv_sec = 10;
     timeout.tv_usec = 0;
 
-
-    if((err = ldap_search_ext_s(ldap, cfg.ldap_base, LDAP_SCOPE_SUBTREE, search,
-                NULL, 0, NULL, NULL, &timeout, 10, &ldap_result) != LDAP_SUCCESS )) {
+    if((err = ldap_search_ext_s(ldap, cfg.ldap_base, LDAP_SCOPE_SUBTREE, search, attrs, 0, NULL, NULL, &timeout, 1,
+			&ldap_result) != LDAP_SUCCESS )) {
 
         printf("%s\n", ldap_err2string(err));
         return -1;
     }
+
     numentries = ldap_count_entries(ldap, ldap_result);
 
     if(numentries != 0) {
@@ -104,9 +110,10 @@ int tcp_mapper_ldap_search(LDAP *ldap, char *search, char *result){
         if(vals == NULL) {
             return 0; 
         }
-        snprintf(result, strlen(vals[0]->bv_val)+1, "%s", 
-                 (char *) vals[0]->bv_val);
+        snprintf(result, strlen(vals[0]->bv_val)+1, "%s", (char *) vals[0]->bv_val);
         ldap_value_free_len(vals);
+		printf("api ldapsearch: %s\n", result);
+		printf("api ldapsearch(%i): %s\n", strlen(result), result);
     }
 
     return numentries;
