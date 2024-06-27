@@ -37,7 +37,7 @@ ldap.o: ldap.c
 
 clean:
 	rm -f postfix-redis *.o
-	rm -rf SOURCES
+	rm -rf SOURCES tmp
 
 install:
 	install -m 0700 -s postfix-redis $(SBINDIR)

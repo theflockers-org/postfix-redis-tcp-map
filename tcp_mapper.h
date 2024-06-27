@@ -24,10 +24,17 @@
 #define POSTFIX_RESPONSE_TEMPFAIL   "400"
 #define POSTFIX_RESPONSE_ERROR      "500"
 
-#define TCP_MAPPER_DOMAIN_QUERY     "SELECT dominio, server FROM dominio WHERE dominio = \"%s\" LIMIT 1"
+
+#define REDIS_BACKEND_NAME        "redis"
+#define LDAP_BACKEND_NAME         "ldap"
+#define MYSQL_BACKEND_NAME        "mysql"
+#define PGSQL_BACKEND_NAME        "pgsql"
 
 
 #define REDIS_POOL_SIZE             10
+
+#define TCP_MAPPER_LOG_LINE         "request_id=%s, email=%s, backend=%s, status=%s"
+
 
 #ifdef USE_LIBEVENT
 /* when accepting the connection */
@@ -51,4 +58,4 @@ struct redisPool {
 
 int redisPoolInit(redisPool *pool, char hostname[255], int poolsize);
 
-int redis_lookup(char * response, redisPool *pool, char *key);
+int redis_lookup(char *reqid, char * response, redisPool *pool, char *key);

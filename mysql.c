@@ -93,7 +93,7 @@ int tcp_mapper_mysql_query(MYSQL *mysql, char *query, char *result){
     numrows = mysql_num_rows(res);
     if(numrows > 0) {
         row = mysql_fetch_row(res);
-        sprintf(result, "%s", (char *) row[0]);
+        snprintf(result, (size_t) strlen(row[0]) +1, "%s", (char *) row[0]);
     }
     mysql_free_result(res);
     // printf("Result: %s\n", result);
