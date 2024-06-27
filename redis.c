@@ -55,23 +55,6 @@ int redisPoolInit(redisPool *pool, char hostname[255], int poolsize)  {
         }
     }
 
-    //reply = redisCommand(c, "GET CURRENTDB");
-
-    //if(reply->type == REDIS_REPLY_STRING) {
-    //    snprintf(currentdb, strlen(reply->str) +1, "%s", reply->str);
-    //}
-
-    //if(atoi(currentdb) == 0) {
-    //    printf("Current db not configured\n");
-    //    syslog(LOG_ERR, "Current db not configured");
-    //    return -1;
-    //}
-    //    
-    //syslog(LOG_INFO, "Current database selected: %s", reply->str);
-
-    //freeReplyObject(reply);
-    //redisFree(c);
-
     for(i = 0; i < poolsize; i++) {
         if(pool->c[i])
            redisFree(pool->c[i]);
@@ -224,8 +207,6 @@ int redis_lookup(char *response, redisPool *pool, char *key) {
         else {
             freeReplyObject(reply);
             return -1;
-            /*snprintf(replyStr, (size_t) strlen(POSTFIX_RESPONSE_ERROR) 
-                + 16, "%s %s", POSTFIX_RESPONSE_ERROR, "unknown entry");*/
         }
 
     }
@@ -235,7 +216,7 @@ int redis_lookup(char *response, redisPool *pool, char *key) {
     freeReplyObject(reply);
 
     /* pasting into *response */
-    sprintf(response, "%s\n", replyStr);
+    snprintf(response, (size_t) strlen(replyStr) +2, "%s\n", replyStr);
 
     return 0;
 }

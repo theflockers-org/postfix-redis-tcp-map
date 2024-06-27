@@ -110,10 +110,8 @@ int tcp_mapper_ldap_search(LDAP *ldap, char *search, char *result){
         if(vals == NULL) {
             return 0; 
         }
-        snprintf(result, strlen(vals[0]->bv_val)+1, "%s", (char *) vals[0]->bv_val);
+        snprintf(result, (size_t) strlen(vals[0]->bv_val)+1, "%s", (char *) vals[0]->bv_val);
         ldap_value_free_len(vals);
-		printf("api ldapsearch: %s\n", result);
-		printf("api ldapsearch(%i): %s\n", strlen(result), result);
     }
 
     return numentries;

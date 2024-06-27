@@ -61,7 +61,6 @@ extern PGconn *pgsql;
  * @return int
  */
 int tcp_mapper_pgsql_query(PGconn *pgsql, char *query, char *result);
-
 #endif
 
 #ifdef HAS_MYSQL
@@ -77,8 +76,6 @@ extern MYSQL *mysql;
  * @return int
  */
 int tcp_mapper_mysql_query(MYSQL *mysql, char *query, char *result);
-
-
 #endif
 
 #ifdef HAS_LDAP
@@ -131,19 +128,21 @@ void on_read(int fd, short ev, void *arg) {
 
     int    len;
 
-    char   cmd[4] = "";
-    char   key[64] = "";
-	char   buf[256];
+    char   cmd[4]   = "";
+    char   key[64]  = "";
+	char   buf[255] = "";
 
-    char   mysqlQueryString[512];
-    char   pgsqlQueryString[512];
-    char   ldapSearchString[512];
-    char   *response = malloc(sizeof *response);
-    char   *result   = malloc(sizeof *result);
+    char   mysqlQueryString[512] = "";
+    char   pgsqlQueryString[512] = "";
+    char   ldapSearchString[512] = "";
+
+    char   *response = NULL;
+    char   *result   = NULL;
+
+	response = malloc(sizeof *response);
+   	result   = malloc(sizeof *result);
  
 	struct client *client = (struct client *)arg;
-
-    memset(&buf, 0, sizeof(buf));
 
     len = read(fd, buf, sizeof(buf));
 
@@ -165,36 +164,31 @@ void on_read(int fd, short ev, void *arg) {
 
     typedef struct email {
         char user[255];
-        char *domain;
+        char domain[255];
     } email;
 
     email parts;
-
 
     /* split the command and the key needed */
     sscanf(buf, "%s %s", cmd, key);
 
     int pos;
-    char *buff;
-  
-    memset(&buff, 0, sizeof(buff));
+    char *buff = NULL;
+
+	buff = malloc(sizeof *buff);
     memset(&parts, 0, sizeof(email));
 
     if((buff = strstr(key, "@") ) != NULL ) {
         pos = buff - key; 
         buff++;
-        parts.domain = buff;
         strncpy(parts.user, key, pos);
+		snprintf(parts.domain, strlen(buff) +1, "%s", buff);
     } else {
-        parts.domain = "NULL";
-        sprintf(parts.user, "%s", "NULL");
+        parts.domain[0] = '\0';
+        parts.user[0] = '\0';
     }
 
     syslog(LOG_INFO, "Postfix request: (%s %s)", cmd, key);
-
-	/* initialize */
-    memset(&response, 0, sizeof(*response));
-    memset(&result, 0, sizeof(*result));
 
     /* Lookup the key into redis and if is not found (!= 0)
      * try to lookup into MySQL or PGSQL.
@@ -202,10 +196,8 @@ void on_read(int fd, short ev, void *arg) {
      * If exists, set into redis.
      *
      */
-    char *replace_email_parts(char *buff, char *orig) {
+    char *replace_email_parts(char *key, char *buff, char *orig) {
 
-        //char buff[1024] = "";
-        
         int i, c = 0;
         for(i = 0; i < strlen(orig); i++) {
             if(orig[i] == '%') {
@@ -227,7 +219,7 @@ void on_read(int fd, short ev, void *arg) {
                     break;
                     case 's':
                         i++;
-                        sprintf(&buff[c], "%s", key);
+                        snprintf(&buff[c], (size_t) strlen(key), "%s", key);
                         c = (strlen(key)) +c;
                     break;
 
@@ -237,34 +229,39 @@ void on_read(int fd, short ev, void *arg) {
             c++;
         }
         buff[c] = '\0';
+
         return buff;
     }
 
     if(!cfg.mysql_enabled == 0) {
         char *mysql_missing_registry_query_buff;
         mysql_missing_registry_query_buff = (char *) malloc(1024);
-        replace_email_parts(mysql_missing_registry_query_buff, cfg.missing_registry_mysql_query);
+        replace_email_parts(key, mysql_missing_registry_query_buff, cfg.missing_registry_mysql_query);
         sprintf(mysqlQueryString, "%s", mysql_missing_registry_query_buff);
 		free(mysql_missing_registry_query_buff);
     }
     if(!cfg.pgsql_enabled == 0) {
         char *pgsql_missing_registry_query_buff;
         pgsql_missing_registry_query_buff = (char *) malloc(1024);
-        replace_email_parts(pgsql_missing_registry_query_buff, cfg.missing_registry_pgsql_query);
+        replace_email_parts(key, pgsql_missing_registry_query_buff, cfg.missing_registry_pgsql_query);
         sprintf(pgsqlQueryString, "%s", pgsql_missing_registry_query_buff);
 		free(pgsql_missing_registry_query_buff);
     }
 
     if(!cfg.ldap_enabled == 0) {
-        char *ldap_missing_registry_search_filter_buff;
+        char *ldap_missing_registry_search_filter_buff = NULL;
         ldap_missing_registry_search_filter_buff = (char *) malloc(1024);
-        replace_email_parts(ldap_missing_registry_search_filter_buff, cfg.ldap_search_filter);
-        sprintf(ldapSearchString, "%s", ldap_missing_registry_search_filter_buff);
+        replace_email_parts(key, ldap_missing_registry_search_filter_buff, cfg.ldap_search_filter);
+        snprintf(ldapSearchString, (size_t) strlen(ldap_missing_registry_search_filter_buff) +1, "%s", ldap_missing_registry_search_filter_buff);
 		free(ldap_missing_registry_search_filter_buff);
     }
 
     if(redis_lookup((char *) &response, &redis_pool, key) != 0) {
-        syslog(LOG_INFO, "Missing key (%s) checking datasource", key);
+
+		char *result = NULL;
+		result = malloc(sizeof(result));
+
+    	syslog(LOG_INFO, "Missing key (%s) checking datasource", key);
 
         /* lookup MySQL, if enabled */
         if(!cfg.mysql_enabled == 0) {    
@@ -274,7 +271,6 @@ void on_read(int fd, short ev, void *arg) {
 
             if(tcp_mapper_mysql_query(mysql, mysqlQueryString, (char *) &result) > 0) {
                 redis_set(&redis_pool, key, (char *) &result);
-
 
                 snprintf((char *) &response, (strlen(POSTFIX_RESPONSE_OK) +
                             strlen((char *) &result)) +3,
@@ -292,7 +288,8 @@ void on_read(int fd, short ev, void *arg) {
 #ifdef HAS_LDAP
             if(tcp_mapper_ldap_search(ldap, ldapSearchString, (char *) &result) > 0) {
                 redis_set(&redis_pool, key, (char *) &result);
-                snprintf((char *) &response, (strlen(POSTFIX_RESPONSE_OK) +
+
+                snprintf((char *) &response, (size_t) (strlen(POSTFIX_RESPONSE_OK) +
                             strlen((char *) &result)) +3,
                         "%s %s\n", POSTFIX_RESPONSE_OK, (char *) &result);
 
@@ -335,7 +332,7 @@ void on_read(int fd, short ev, void *arg) {
                 syslog(LOG_INFO, "Key (%s) not found", key);
         }
     }
-    send(fd, &response, (size_t)strlen((const char *) &response), MSG_NOSIGNAL);
+    send(fd, &response, (size_t) strlen((const char *) &response), MSG_NOSIGNAL);
 }
 
 /**
