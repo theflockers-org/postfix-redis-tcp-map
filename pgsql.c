@@ -33,6 +33,8 @@
 /* config */
 extern config cfg;
 
+
+#define PGSQL_PORT_LENGTH 4
 /**
  * @name init_pgsql
  * @description initiates a pgsql connection
@@ -42,9 +44,16 @@ PGconn * init_pgsql(void) {
 
     PGconn *pgsql;
     char connInfo[255];
+	char connStr[] = "host=%s port=%i dbname=%s user=%s password=%s";
 
-    sprintf(connInfo, "host=%s port=%i dbname=%s user=%s password=%s", 
-            cfg.pgsql_address, cfg.pgsql_port, cfg.pgsql_dbname, 
+    snprintf(connInfo, (size_t) strlen(connStr) +
+					   strlen(cfg.pgsql_address) +
+					   PGSQL_PORT_LENGTH +
+					   strlen(cfg.pgsql_dbname) +
+					   strlen(cfg.pgsql_username) +
+					   strlen(cfg.pgsql_password) +6,
+			connStr,
+            cfg.pgsql_address, cfg.pgsql_port, cfg.pgsql_dbname,
             cfg.pgsql_username, cfg.pgsql_password);
 
     pgsql = PQconnectdb(connInfo);
@@ -70,13 +79,17 @@ int tcp_mapper_pgsql_query(PGconn *pgsql, char *query, char *result) {
 
     PGresult *res;
     int      numrows;
+	char *values = NULL;
+
+	values = malloc(sizeof(*values));
 
     res = PQexec(pgsql, query);
     numrows = PQntuples(res);
 
     /* get only the first row.. do not need more.. */
     if(numrows > 0) {
-        sprintf(result, "%s", PQgetvalue(res, 0, 0));
+		values = PQgetvalue(res, 0, 0);
+        snprintf(result, (size_t) strlen(values) +1, "%s", values);
     }
 
     PQclear(res);

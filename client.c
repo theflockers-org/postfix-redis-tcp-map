@@ -100,7 +100,7 @@ extern config cfg;
  *  @struct client
  */
 struct client {
-	struct event ev_read;
+    struct event ev_read;
 };
 
 /* redis */
@@ -127,10 +127,12 @@ int redis_set(redisPool *pool, char *key, char *val);
 void on_read(int fd, short ev, void *arg) {
 
     int    len;
+    int    random_id = rand() % 999999;
+    char   reqid[8] = "";
 
     char   cmd[4]   = "";
     char   key[64]  = "";
-	char   buf[255] = "";
+    char   buf[255] = "";
 
     char   mysqlQueryString[512] = "";
     char   pgsqlQueryString[512] = "";
@@ -139,28 +141,30 @@ void on_read(int fd, short ev, void *arg) {
     char   *response = NULL;
     char   *result   = NULL;
 
-	response = malloc(sizeof *response);
-   	result   = malloc(sizeof *result);
+    response = malloc(sizeof *response);
+       result   = malloc(sizeof *result);
  
-	struct client *client = (struct client *)arg;
+    struct client *client = (struct client *)arg;
+
+    snprintf(reqid, 8, "%d", random_id);
 
     len = read(fd, buf, sizeof(buf));
 
-	if (len == 0) {
-		syslog(LOG_INFO, "Client disconnected");
+    if (len == 0) {
+        syslog(LOG_INFO, "Client disconnected");
         close(fd);
-		event_del(&client->ev_read);
-		free(client);
-		return;
-	} else if (len < 0) {
-		syslog(LOG_INFO, "Socket failure, disconnecting client: %s", 
+        event_del(&client->ev_read);
+        free(client);
+        return;
+    } else if (len < 0) {
+        syslog(LOG_INFO, "Socket failure, disconnecting client: %s",
             strerror(errno));
 
-		close(fd);
-		event_del(&client->ev_read);
-		free(client);
-		return;
-	}
+        close(fd);
+        event_del(&client->ev_read);
+        free(client);
+        return;
+    }
 
     typedef struct email {
         char user[255];
@@ -175,20 +179,20 @@ void on_read(int fd, short ev, void *arg) {
     int pos;
     char *buff = NULL;
 
-	buff = malloc(sizeof *buff);
+    buff = malloc(sizeof *buff);
     memset(&parts, 0, sizeof(email));
 
     if((buff = strstr(key, "@") ) != NULL ) {
         pos = buff - key; 
         buff++;
         strncpy(parts.user, key, pos);
-		snprintf(parts.domain, strlen(buff) +1, "%s", buff);
+        snprintf(parts.domain, strlen(buff) +1, "%s", buff);
     } else {
         parts.domain[0] = '\0';
         parts.user[0] = '\0';
     }
 
-    syslog(LOG_INFO, "Postfix request: (%s %s)", cmd, key);
+    syslog(LOG_INFO, "request_id=%s msg=postfix request: (%s %s)", reqid, cmd, key);
 
     /* Lookup the key into redis and if is not found (!= 0)
      * try to lookup into MySQL or PGSQL.
@@ -206,14 +210,14 @@ void on_read(int fd, short ev, void *arg) {
                     case 'd':
                         i++;
                         if(strlen(parts.domain) != 0) {
-                            sprintf(&buff[c], "%s", parts.domain);
+                            snprintf(&buff[c], (size_t) strlen(parts.domain) +1, "%s", parts.domain);
                         }
                         c = (strlen(parts.domain)) +c;
                     break;
                     case 'u':
                         i++;
                         if(strlen(parts.user) != 0) {
-                            sprintf(&buff[c], "%s", parts.user);
+                            snprintf(&buff[c], (size_t) strlen(parts.user) +1, "%s", parts.user);
                         }
                         c = (strlen(parts.user)) +c;
                     break;
@@ -234,18 +238,19 @@ void on_read(int fd, short ev, void *arg) {
     }
 
     if(!cfg.mysql_enabled == 0) {
-        char *mysql_missing_registry_query_buff;
+        char *mysql_missing_registry_query_buff = NULL;
         mysql_missing_registry_query_buff = (char *) malloc(1024);
         replace_email_parts(key, mysql_missing_registry_query_buff, cfg.missing_registry_mysql_query);
-        sprintf(mysqlQueryString, "%s", mysql_missing_registry_query_buff);
-		free(mysql_missing_registry_query_buff);
+        snprintf(mysqlQueryString, (size_t) strlen(mysql_missing_registry_query_buff) +1, "%s", mysql_missing_registry_query_buff);
+        free(mysql_missing_registry_query_buff);
     }
+
     if(!cfg.pgsql_enabled == 0) {
-        char *pgsql_missing_registry_query_buff;
+        char *pgsql_missing_registry_query_buff = NULL;
         pgsql_missing_registry_query_buff = (char *) malloc(1024);
         replace_email_parts(key, pgsql_missing_registry_query_buff, cfg.missing_registry_pgsql_query);
-        sprintf(pgsqlQueryString, "%s", pgsql_missing_registry_query_buff);
-		free(pgsql_missing_registry_query_buff);
+        snprintf(pgsqlQueryString, (size_t) strlen(pgsql_missing_registry_query_buff) +1, "%s", pgsql_missing_registry_query_buff);
+        free(pgsql_missing_registry_query_buff);
     }
 
     if(!cfg.ldap_enabled == 0) {
@@ -253,54 +258,83 @@ void on_read(int fd, short ev, void *arg) {
         ldap_missing_registry_search_filter_buff = (char *) malloc(1024);
         replace_email_parts(key, ldap_missing_registry_search_filter_buff, cfg.ldap_search_filter);
         snprintf(ldapSearchString, (size_t) strlen(ldap_missing_registry_search_filter_buff) +1, "%s", ldap_missing_registry_search_filter_buff);
-		free(ldap_missing_registry_search_filter_buff);
+        free(ldap_missing_registry_search_filter_buff);
     }
 
-    if(redis_lookup((char *) &response, &redis_pool, key) != 0) {
+    if(redis_lookup((char *) reqid, (char *) &response, &redis_pool, key) != 0) {
 
-		char *result = NULL;
-		result = malloc(sizeof(result));
+        char logline[255] = "";
 
-    	syslog(LOG_INFO, "Missing key (%s) checking datasource", key);
+        char *result          = NULL;
+        char *backendResponse = NULL;
+
+        result          = malloc(sizeof(result));
+        backendResponse = malloc(sizeof(backendResponse));
 
         /* lookup MySQL, if enabled */
         if(!cfg.mysql_enabled == 0) {    
 #ifdef HAS_MYSQL
+
             /* ping the mysql server, and reconnect */
             mysql_ping(mysql);
 
             if(tcp_mapper_mysql_query(mysql, mysqlQueryString, (char *) &result) > 0) {
                 redis_set(&redis_pool, key, (char *) &result);
 
-                snprintf((char *) &response, (strlen(POSTFIX_RESPONSE_OK) +
-                            strlen((char *) &result)) +3,
-                        "%s %s\n", POSTFIX_RESPONSE_OK, (char *) &result);
+                snprintf((char *) &backendResponse, (strlen(POSTFIX_RESPONSE_OK) +
+                            strlen((char *) &result)) +2,
+                        "%s %s", POSTFIX_RESPONSE_OK, (char *) &result);
 
-                syslog(LOG_INFO, "Key (%s) found on MySQL", key);
+                /* logging success */
+                snprintf(logline,
+                    (size_t) strlen(TCP_MAPPER_LOG_LINE) +  strlen(reqid) + strlen(key) + strlen(POSTFIX_RESPONSE_OK) + 4,
+                    TCP_MAPPER_LOG_LINE,
+                    (char *) reqid, key, MYSQL_BACKEND_NAME, POSTFIX_RESPONSE_OK);
             } 
             else {
-                snprintf((char *) &response, strlen(POSTFIX_RESPONSE_ERROR) + 16,
-                    "%s %s\n", POSTFIX_RESPONSE_ERROR, "unknown entry");
+                snprintf((char *) &backendResponse, strlen(POSTFIX_RESPONSE_ERROR) + 15,
+                    "%s %s", POSTFIX_RESPONSE_ERROR, "unknown entry");
+
+                /* logging error */
+                snprintf(logline,
+                    (size_t) strlen(TCP_MAPPER_LOG_LINE) +  strlen(reqid) + strlen(key) + strlen(POSTFIX_RESPONSE_ERROR) + 4,
+                    TCP_MAPPER_LOG_LINE,
+                    (char *) reqid, key, MYSQL_BACKEND_NAME, POSTFIX_RESPONSE_ERROR);
+
             }
+            syslog(LOG_INFO, logline);
 #endif
         }
+
+        /* lookup LDAP if enabled */
         else if(!cfg.ldap_enabled == 0) {
 #ifdef HAS_LDAP
+
             if(tcp_mapper_ldap_search(ldap, ldapSearchString, (char *) &result) > 0) {
                 redis_set(&redis_pool, key, (char *) &result);
 
-                snprintf((char *) &response, (size_t) (strlen(POSTFIX_RESPONSE_OK) +
-                            strlen((char *) &result)) +3,
-                        "%s %s\n", POSTFIX_RESPONSE_OK, (char *) &result);
+                snprintf((char *) &backendResponse, (size_t) strlen(POSTFIX_RESPONSE_OK) +4, "%s OK", POSTFIX_RESPONSE_OK);
 
-                syslog(LOG_INFO, "Key (%s) found on Directory", key);
+                /* logging success */
+                snprintf(logline,
+                    (size_t) strlen(TCP_MAPPER_LOG_LINE) + strlen(key) + strlen(POSTFIX_RESPONSE_OK) + 4,
+                    TCP_MAPPER_LOG_LINE,
+                    (char *) reqid, key, LDAP_BACKEND_NAME, POSTFIX_RESPONSE_OK);
             }
             else {
-                snprintf((char *) &response, strlen(POSTFIX_RESPONSE_ERROR) + 16,
-                        "%s %s\n", POSTFIX_RESPONSE_ERROR, "unknown entry");
+                snprintf((char *) &backendResponse, strlen(POSTFIX_RESPONSE_ERROR) + 15,
+                        "%s %s", POSTFIX_RESPONSE_ERROR, "unknown entry");
+
+                /* logging error */
+                snprintf(logline,
+                    (size_t) strlen(TCP_MAPPER_LOG_LINE) + strlen(reqid) + strlen(key) + strlen(POSTFIX_RESPONSE_ERROR) + 4,
+                    TCP_MAPPER_LOG_LINE,
+                    (char *) reqid, key, LDAP_BACKEND_NAME, POSTFIX_RESPONSE_ERROR);
             }
+            syslog(LOG_INFO, logline);
 #endif
         }
+
         /* lookup PgSQL, if enabled */
         else if(!cfg.pgsql_enabled == 0){
 #ifdef HAS_PGSQL
@@ -314,24 +348,45 @@ void on_read(int fd, short ev, void *arg) {
 
                 redis_set(&redis_pool, key, (char *) &result);
 
-                snprintf((char *) &response, (strlen(POSTFIX_RESPONSE_OK) +
+                snprintf((char *) &backendResponse, (strlen(POSTFIX_RESPONSE_OK) +
                             strlen((char *) &result) ) +3,
-                        "%s %s\n", POSTFIX_RESPONSE_OK, (char *) &result);
+                        "%s %s", POSTFIX_RESPONSE_OK, (char *) &result);
 
-                syslog(LOG_INFO, "Key (%s) found on PostgreSQL", key);
+                /* logging success */
+                snprintf(logline,
+                    (size_t) strlen(TCP_MAPPER_LOG_LINE) +  strlen(reqid) + strlen(key) + strlen(POSTFIX_RESPONSE_OK) + 4,
+                    TCP_MAPPER_LOG_LINE,
+                    (char *) reqid, key, PGSQL_BACKEND_NAME, POSTFIX_RESPONSE_OK);
             }
             else {
-                snprintf((char *) &response, strlen(POSTFIX_RESPONSE_ERROR) + 16,
-                        "%s %s\n", POSTFIX_RESPONSE_ERROR, "unknown entry");
+                snprintf((char *) &backendResponse, strlen(POSTFIX_RESPONSE_ERROR) + 16,
+                        "%s %s", POSTFIX_RESPONSE_ERROR, "unknown entry");
+
+                /* logging error */
+                snprintf(logline,
+                    (size_t) strlen(TCP_MAPPER_LOG_LINE) +  strlen(reqid) + strlen(key) + strlen(POSTFIX_RESPONSE_ERROR) + 4,
+                    TCP_MAPPER_LOG_LINE,
+                    (char *) reqid, key, PGSQL_BACKEND_NAME, POSTFIX_RESPONSE_ERROR);
+
             }
+            syslog(LOG_INFO, logline);
 #endif
         }
         else  {
-            snprintf((char *) &response, strlen(POSTFIX_RESPONSE_ERROR) + 16,
-                        "%s %s\n", POSTFIX_RESPONSE_ERROR, "unknown entry");
-                syslog(LOG_INFO, "Key (%s) not found", key);
+            snprintf((char *) &backendResponse, strlen(POSTFIX_RESPONSE_ERROR) + 16,
+                        "%s %s", POSTFIX_RESPONSE_ERROR, "unknown entry");
+
+            /* logging error */
+            snprintf(logline,
+                (size_t) strlen(TCP_MAPPER_LOG_LINE) + strlen(reqid) + strlen(key) + strlen(POSTFIX_RESPONSE_ERROR) + 7,
+                TCP_MAPPER_LOG_LINE,
+                (char *)reqid, key, "none",  POSTFIX_RESPONSE_ERROR);
         }
+
+        snprintf((char *)&response, (size_t) strlen((char *)&backendResponse) +3, "%s\n", (char *) &backendResponse);
+        syslog(LOG_INFO, "reply sent to client: (%s)", (char *) &backendResponse);
     }
+
     send(fd, &response, (size_t) strlen((const char *) &response), MSG_NOSIGNAL);
 }
 
@@ -342,40 +397,40 @@ void on_read(int fd, short ev, void *arg) {
 void
 on_accept(int fd, short ev, void *arg)
 {
-	int client_fd;
-	struct sockaddr_in client_addr;
-	socklen_t client_len = sizeof(client_addr);
-	struct client *client;
+    int client_fd;
 
-	/* Accept the new connection. */
-	client_fd = accept(fd, (struct sockaddr *)&client_addr, &client_len);
-	if (client_fd == -1) {
-		warn("accept failed");
-		return;
-	}
+    struct sockaddr_in client_addr;
+    socklen_t client_len = sizeof(client_addr);
+    struct client *client;
 
-	/* Set the client socket to non-blocking mode. */
-	if (setnonblocking(client_fd) < 0)
-		syslog(LOG_INFO, "failed to set client socket non-blocking");
+    /* Accept the new connection. */
+    client_fd = accept(fd, (struct sockaddr *)&client_addr, &client_len);
+    if (client_fd == -1) {
+        warn("accept failed");
+        return;
+    }
 
-	/* We've accepted a new client, allocate a client object to
-	 * maintain the state of this client. */
-	client = calloc(1, sizeof(*client));
-	if (client == NULL)
-		err(1, "malloc failed");
+    /* Set the client socket to non-blocking mode. */
+    if (setnonblocking(client_fd) < 0)
+        syslog(LOG_INFO, "failed to set client socket non-blocking");
 
-	/* Setup the read event, libevent will call on_read() whenever
-	 * the clients socket becomes read ready.  We also make the
-	 * read event persistent so we don't have to re-add after each
-	 * read. */
-	event_set(&client->ev_read, client_fd, EV_READ|EV_PERSIST, on_read, 
-	    client);
+    /* We've accepted a new client, allocate a client object to
+     * maintain the state of this client. */
+    client = calloc(1, sizeof(*client));
+    if (client == NULL)
+        err(1, "malloc failed");
 
-	/* Setting up the event does not activate, add the event so it
-	 * becomes active. */
+    /* Setup the read event, libevent will call on_read() whenever
+     * the clients socket becomes read ready.  We also make the
+     * read event persistent so we don't have to re-add after each
+     * read. */
+    event_set(&client->ev_read, client_fd, EV_READ|EV_PERSIST, on_read, client);
 
-	event_add(&client->ev_read, NULL);
+    /* Setting up the event does not activate, add the event so it
+     * becomes active. */
 
-	syslog(LOG_INFO, "Accepted connection from %s\n",
+    event_add(&client->ev_read, NULL);
+
+    syslog(LOG_INFO, "Accepted connection from %s\n",
                inet_ntoa(client_addr.sin_addr));
 }

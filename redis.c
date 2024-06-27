@@ -116,7 +116,7 @@ int redis_set(redisPool *pool, char *key, char *val) {
     
     freeReplyObject(reply);
     if(cfg.expire_seconds > 0) {
-        sprintf(str_seconds, "%d",  cfg.expire_seconds);
+        snprintf(str_seconds, (size_t) sizeof(cfg.expire_seconds),  "%d",  cfg.expire_seconds);
         reply = redisCommand(c, "EXPIRE %b:%b %b",
                     cfg.registry_prefix, strlen(cfg.registry_prefix),
                     key, strlen(key), 
@@ -126,9 +126,10 @@ int redis_set(redisPool *pool, char *key, char *val) {
     return 0;
 }
 
-int redis_lookup(char *response, redisPool *pool, char *key) {
+int redis_lookup(char *reqid, char *response, redisPool *pool, char *key) {
 
     redisReply *reply;
+    char       logline[255];
     char       replyStr[64] = "";
     char       registry[64] = "";
     time_t     client_time;
@@ -188,30 +189,49 @@ int redis_lookup(char *response, redisPool *pool, char *key) {
 
             /* re-send the request */
             reply = redisCommand(c, "GET %b:%b", registry, strlen(registry), key, strlen(key));
-            snprintf(replyStr, (size_t) strlen(POSTFIX_RESPONSE_OK) 
-                + strlen(reply->str) +4, "%s %s\n", POSTFIX_RESPONSE_OK, reply->str);
+            snprintf(replyStr, (size_t) strlen(POSTFIX_RESPONSE_OK) +5, "%s OK", POSTFIX_RESPONSE_OK);
+
+            /* logging */
+            snprintf(logline,
+                        (size_t) strlen(TCP_MAPPER_LOG_LINE) + strlen(key) + strlen(POSTFIX_RESPONSE_OK) + 4,
+                        TCP_MAPPER_LOG_LINE,
+                        (char *) reqid, key, REDIS_BACKEND_NAME, POSTFIX_RESPONSE_OK);
+    //                        key, REDIS_BACKEND_NAME, POSTFIX_RESPONSE_OK);
+            syslog(LOG_INFO, logline);
         }
     }
     else {
-
         /* time the reply to client */
         if(reply->type != REDIS_REPLY_NIL) {
             /* if is a string (in this case, always) */
             if(reply->type == REDIS_REPLY_STRING) {
-                snprintf(replyStr, (size_t) strlen(POSTFIX_RESPONSE_OK) 
-                        + strlen(reply->str) +3, "%s %s", POSTFIX_RESPONSE_OK, reply->str);
+                snprintf(replyStr, (size_t) strlen(POSTFIX_RESPONSE_OK) +5, "%s OK", POSTFIX_RESPONSE_OK);
+
+                /* logging */
+                snprintf(logline,
+                            (size_t) strlen(TCP_MAPPER_LOG_LINE) + strlen(key) + strlen(POSTFIX_RESPONSE_OK) + 4,
+                            TCP_MAPPER_LOG_LINE,
+    //                        key, REDIS_BACKEND_NAME, POSTFIX_RESPONSE_OK);
+                            (char *) reqid, key, REDIS_BACKEND_NAME, POSTFIX_RESPONSE_OK);
+                syslog(LOG_INFO, logline);
             }
         }
         /* if the entry does not exists, reply 500 to client */
         /* update: return -1, to query a dbms */
         else {
             freeReplyObject(reply);
+            /* logging */
+            snprintf(logline,
+                        (size_t) strlen(TCP_MAPPER_LOG_LINE) + strlen(key) + strlen(POSTFIX_RESPONSE_ERROR) + 4,
+                        TCP_MAPPER_LOG_LINE,
+//                        key, REDIS_BACKEND_NAME, POSTFIX_RESPONSE_ERROR);
+                        (char *) reqid, key, REDIS_BACKEND_NAME, POSTFIX_RESPONSE_ERROR);
+            syslog(LOG_INFO, logline);
+
             return -1;
         }
 
     }
-    syslog(LOG_INFO, "Reply sent to client: (%s)", replyStr);
-
     /* freeing response */
     freeReplyObject(reply);
 
