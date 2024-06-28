@@ -1,14 +1,10 @@
-# Postfix Redis-TCP Map
+# Postfix Redis tcp map
 
 Fetches entries from your MySQL/PGSQL or LDAP and saves on Redis for caching
 purposes
 
 ## Disclaimer
 This software is distributed as is without any warranty
-
-## Known bugs
-
-LDAP is not fully functional at the moment.
 
 ## Requirements
 
@@ -41,6 +37,11 @@ $ make CFLAGS="-DHAS_LDAP -I/usr/include \
        LDFLAGS="-L/usr/lib -lldap"
 ```
 
+### All backends
+```
+$ make CFLAGS="-DHAS_LDAP -I/usr/include -DHAS_PGSQL -DHAS_MYSQL -I/usr/include/mysql \
+       LDFLAGS="-L/usr/lib -lldap -lpq -lmysqlclient"
+```
 ## Running
 ```
 $ sudo ./postfix-redis -c /etc/postfix-redis/postfix-redis.cfg
@@ -64,9 +65,9 @@ lala | popo.com.br
 Sample `missing_registry_query`
 
 ```
-SELECT 'OK' from domain where user = '%u' and domain = '%d'
+SELECT 'OK' from users where user = '%u' and domain = '%d'
 ```
-The `OK` part is mandatory.
+The `OK` part is mandatory, although is set to removal.
 
 ### Benchmark
 
